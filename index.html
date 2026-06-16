@@ -186,6 +186,55 @@
   .actions button:active { background: var(--bg-soft); color: var(--text); }
   .actions button:disabled { opacity: .35; cursor: default; }
 
+  /* Earlier-dose panel */
+  .past-panel {
+    background: var(--card);
+    border: 1px solid var(--ring-track);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 2px;
+  }
+  .past-panel label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .past-panel input[type="datetime-local"] {
+    appearance: none;
+    width: 100%;
+    background: var(--bg-soft);
+    border: 1px solid var(--ring-track);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+    font-family: inherit;
+  }
+  .past-actions { display: flex; gap: 10px; }
+  .past-actions button {
+    flex: 1;
+    appearance: none;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .past-actions #past-add {
+    background: var(--accent);
+    color: #04263a;
+  }
+  .past-actions .ghost {
+    background: transparent;
+    border: 1px solid var(--ring-track);
+    color: var(--muted);
+  }
+  .past-actions button:active { transform: scale(.98); }
+
   /* Log list */
   .log-list {
     margin-top: 6px;
@@ -296,8 +345,18 @@
     </button>
 
     <div class="actions">
+      <button id="past-btn">＋ Earlier dose</button>
       <button id="undo-btn">↩ Undo last</button>
       <button id="reset-btn">Reset course</button>
+    </div>
+
+    <div class="past-panel" id="past-panel" hidden>
+      <label for="past-input">When did you take it?</label>
+      <input type="datetime-local" id="past-input" />
+      <div class="past-actions">
+        <button id="past-cancel" class="ghost">Cancel</button>
+        <button id="past-add">Add dose</button>
+      </div>
     </div>
 
     <div class="log-list" id="log-list"></div>
@@ -377,7 +436,12 @@
     resetBtn: document.getElementById("reset-btn"),
     list: document.getElementById("log-list"),
     banner: document.getElementById("complete-banner"),
-    toast: document.getElementById("toast")
+    toast: document.getElementById("toast"),
+    pastBtn: document.getElementById("past-btn"),
+    pastPanel: document.getElementById("past-panel"),
+    pastInput: document.getElementById("past-input"),
+    pastAdd: document.getElementById("past-add"),
+    pastCancel: document.getElementById("past-cancel")
   };
 
   function render() {
@@ -515,6 +579,48 @@
   }
 
   // ---- actions ----
+  // Keep doses ascending so day/first-dose logic stays correct after backfilling.
+  function insertSorted(ts) {
+    var i = doses.length;
+    while (i > 0 && doses[i - 1] > ts) i--;
+    doses.splice(i, 0, ts);
+    return i;
+  }
+
+  // Format a timestamp as a local "YYYY-MM-DDTHH:MM" value for datetime-local inputs.
+  function toLocalInput(ts) {
+    var d = new Date(ts);
+    var p = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+           "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  function openPastPanel() {
+    var now = Date.now();
+    el.pastInput.value = toLocalInput(now);
+    el.pastInput.max = toLocalInput(now);
+    el.pastPanel.hidden = false;
+    el.pastInput.focus();
+    el.pastPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function closePastPanel() { el.pastPanel.hidden = true; }
+
+  function addPastDose() {
+    if (!el.pastInput.value) { toast("Pick a date and time"); return; }
+    var ts = new Date(el.pastInput.value).getTime();
+    if (isNaN(ts)) { toast("Invalid date"); return; }
+    if (ts > Date.now() + 60000) { toast("That time is in the future"); return; }
+    // Avoid accidental duplicates within a minute of an existing dose.
+    var dup = doses.some(function (d) { return Math.abs(d - ts) < 60000; });
+    if (dup) { toast("A dose is already logged then"); return; }
+    insertSorted(ts);
+    save();
+    closePastPanel();
+    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+    toast("Added dose · " + fmtTime(ts) + " " + dateLabel(ts).toLowerCase());
+    render();
+  }
+
   function logDose() {
     var now = Date.now();
     // guard against accidental rapid double-taps (< 60s)
@@ -551,6 +657,11 @@
   el.logBtn.addEventListener("click", logDose);
   el.undoBtn.addEventListener("click", undo);
   el.resetBtn.addEventListener("click", reset);
+  el.pastBtn.addEventListener("click", function () {
+    if (el.pastPanel.hidden) openPastPanel(); else closePastPanel();
+  });
+  el.pastAdd.addEventListener("click", addPastDose);
+  el.pastCancel.addEventListener("click", closePastPanel);
 
   // refresh time-based hint every 30s and on focus
   function startTick() {

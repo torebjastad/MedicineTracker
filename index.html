@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Dicloxacillin Tracker</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-soft: #1e293b;
+    --card: #1e293b;
+    --accent: #38bdf8;
+    --accent-strong: #0ea5e9;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --ring-track: #334155;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: radial-gradient(1200px 600px at 50% -10%, #1e293b 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: calc(16px + var(--safe-top)) 18px calc(16px + var(--safe-bottom));
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  /* Progress ring */
+  .ring-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .ring {
+    position: relative;
+    width: 220px;
+    height: 220px;
+  }
+  .ring svg { transform: rotate(-90deg); display: block; }
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .ring-count {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .ring-count small { font-size: 24px; font-weight: 600; color: var(--muted); }
+  .ring-label {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Today dots */
+  .today {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .dots { display: flex; gap: 12px; }
+  .dot {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--ring-track);
+    background: transparent;
+    transition: transform .2s ease, background .2s ease, border-color .2s ease;
+  }
+  .dot.filled {
+    background: var(--good);
+    border-color: var(--good);
+    box-shadow: 0 0 12px rgba(34,197,94,.45);
+  }
+  .today-label { font-size: 13px; color: var(--muted); }
+
+  /* Next dose hint */
+  .hint {
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+    min-height: 20px;
+  }
+  .hint b { color: var(--text); font-weight: 600; }
+  .hint.ready b { color: var(--good); }
+  .hint.soon b { color: var(--warn); }
+
+  /* Big log button */
+  .log-btn {
+    appearance: none;
+    border: none;
+    width: 100%;
+    padding: 20px;
+    border-radius: 20px;
+    font-size: 19px;
+    font-weight: 700;
+    color: #04263a;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-strong) 100%);
+    box-shadow: 0 10px 30px rgba(14,165,233,.35);
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+    touch-action: manipulation;
+  }
+  .log-btn:active { transform: scale(.97); }
+  .log-btn:disabled {
+    background: var(--bg-soft);
+    color: var(--muted);
+    box-shadow: none;
+    cursor: default;
+  }
+  .log-btn .sub { display: block; font-size: 12px; font-weight: 500; margin-top: 2px; opacity: .8; }
+
+  /* Secondary actions */
+  .actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .actions button {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--ring-track);
+    color: var(--muted);
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .actions button:active { background: var(--bg-soft); color: var(--text); }
+  .actions button:disabled { opacity: .35; cursor: default; }
+
+  /* Log list */
+  .log-list {
+    margin-top: 6px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 6px 14px;
+    max-height: 168px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .log-list:empty { display: none; }
+  .log-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(148,163,184,.12);
+    font-size: 14px;
+  }
+  .log-row:last-child { border-bottom: none; }
+  .log-row .ln { color: var(--muted); font-size: 12px; }
+  .log-row .lt { font-weight: 600; }
+  .log-row .ld { color: var(--muted); font-size: 12px; margin-left: 6px; font-weight: 400; }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 14px;
+    opacity: .7;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + var(--safe-bottom));
+    transform: translateX(-50%) translateY(20px);
+    background: var(--good);
+    color: #04130a;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.done { background: var(--accent); color: #04263a; }
+
+  .complete-banner {
+    background: linear-gradient(180deg, rgba(34,197,94,.18), rgba(34,197,94,.06));
+    border: 1px solid rgba(34,197,94,.4);
+    color: var(--good);
+    text-align: center;
+    padding: 14px;
+    border-radius: 16px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Dicloxacillin Orion</h1>
+    <p id="course-line">4× daily · 9-day course</p>
+  </header>
+
+  <div class="main">
+    <div id="complete-banner" class="complete-banner" hidden>
+      🎉 Course complete — all 36 doses logged. Well done!
+    </div>
+
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <circle cx="110" cy="110" r="100" fill="none" stroke="var(--ring-track)" stroke-width="14" />
+          <circle id="ring-progress" cx="110" cy="110" r="100" fill="none"
+                  stroke="url(#grad)" stroke-width="14" stroke-linecap="round"
+                  stroke-dasharray="628.3" stroke-dashoffset="628.3" />
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="100%" stop-color="#22c55e" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-count"><span id="total-count">0</span><small>/36</small></div>
+          <div class="ring-label" id="day-label">Day 1 of 9</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="today">
+      <div class="dots" id="today-dots"></div>
+      <div class="today-label" id="today-label">0 of 4 doses today</div>
+    </div>
+
+    <div class="hint" id="hint"></div>
+
+    <button class="log-btn" id="log-btn">
+      Log a dose now
+      <span class="sub" id="log-sub">Tap when you take a tablet</span>
+    </button>
+
+    <div class="actions">
+      <button id="undo-btn">↩ Undo last</button>
+      <button id="reset-btn">Reset course</button>
+    </div>
+
+    <div class="log-list" id="log-list"></div>
+  </div>
+
+  <footer>Saved on this device only · no account needed</footer>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "dicloxacillin.doses.v1";
+  var DOSES_PER_DAY = 4;
+  var COURSE_DAYS = 9;
+  var TOTAL_DOSES = DOSES_PER_DAY * COURSE_DAYS; // 36
+  var INTERVAL_MS = 6 * 60 * 60 * 1000;          // ~6h between doses
+  var RING_CIRC = 2 * Math.PI * 100;             // 628.3
+
+  // doses = array of epoch-ms timestamps, ascending
+  var doses = load();
+  var tickTimer = null;
+
+  // ---- storage ----
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(function (n) { return typeof n === "number"; }) : [];
+    } catch (e) { return []; }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(doses)); } catch (e) {}
+  }
+
+  // ---- date helpers ----
+  function startOfDay(ts) {
+    var d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  // Which course-day (1-based) is the dose's day relative to the first dose's calendar day.
+  function courseDayOf(ts) {
+    if (doses.length === 0) return 1;
+    var diff = startOfDay(ts) - startOfDay(doses[0]);
+    return Math.floor(diff / 86400000) + 1;
+  }
+  function dosesToday() {
+    var today = startOfDay(Date.now());
+    return doses.filter(function (ts) { return startOfDay(ts) === today; });
+  }
+  function fmtTime(ts) {
+    return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  function fmtDur(ms) {
+    var mins = Math.round(ms / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + " min";
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return m === 0 ? h + "h" : h + "h " + m + "m";
+  }
+  function sameDay(a, b) { return startOfDay(a) === startOfDay(b); }
+
+  // ---- render ----
+  var el = {
+    ring: document.getElementById("ring-progress"),
+    total: document.getElementById("total-count"),
+    dayLabel: document.getElementById("day-label"),
+    dots: document.getElementById("today-dots"),
+    todayLabel: document.getElementById("today-label"),
+    hint: document.getElementById("hint"),
+    logBtn: document.getElementById("log-btn"),
+    logSub: document.getElementById("log-sub"),
+    undoBtn: document.getElementById("undo-btn"),
+    resetBtn: document.getElementById("reset-btn"),
+    list: document.getElementById("log-list"),
+    banner: document.getElementById("complete-banner"),
+    toast: document.getElementById("toast")
+  };
+
+  function render() {
+    var total = doses.length;
+    var todays = dosesToday();
+    var done = total >= TOTAL_DOSES;
+
+    // ring
+    var frac = Math.min(total / TOTAL_DOSES, 1);
+    el.ring.style.strokeDashoffset = String(RING_CIRC * (1 - frac));
+    el.total.textContent = String(total);
+
+    // day label
+    var curDay = total === 0 ? 1 : Math.min(courseDayOf(Date.now()), COURSE_DAYS);
+    el.dayLabel.textContent = total === 0 ? "Not started" : "Day " + curDay + " of " + COURSE_DAYS;
+
+    // today dots
+    el.dots.innerHTML = "";
+    for (var i = 0; i < DOSES_PER_DAY; i++) {
+      var d = document.createElement("div");
+      d.className = "dot" + (i < todays.length ? " filled" : "");
+      el.dots.appendChild(d);
+    }
+    var extra = todays.length > DOSES_PER_DAY ? " (+" + (todays.length - DOSES_PER_DAY) + " extra)" : "";
+    el.todayLabel.textContent = todays.length + " of " + DOSES_PER_DAY + " doses today" + extra;
+
+    // complete banner
+    el.banner.hidden = !done;
+
+    // hint + button state
+    updateHint();
+
+    // undo availability
+    el.undoBtn.disabled = total === 0;
+
+    // log list (most recent first)
+    renderList();
+  }
+
+  function updateHint() {
+    var total = doses.length;
+    var todays = dosesToday();
+    var last = total ? doses[total - 1] : null;
+    el.hint.className = "hint";
+
+    if (total >= TOTAL_DOSES) {
+      el.hint.innerHTML = "All doses taken — you can stop here.";
+      el.logBtn.disabled = false; // still allow extra if prescribed
+      el.logBtn.firstChild.nodeValue = "Log an extra dose";
+      el.logSub.textContent = "Course already complete";
+      return;
+    }
+
+    el.logBtn.disabled = false;
+
+    if (!last) {
+      el.hint.innerHTML = "Tap below when you take your <b>first tablet</b>.";
+      el.logBtn.firstChild.nodeValue = "Log first dose";
+      el.logSub.textContent = "Starts your 9-day course";
+      return;
+    }
+
+    el.logBtn.firstChild.nodeValue = "Log a dose now";
+
+    var sinceLast = Date.now() - last;
+    var nextAt = last + INTERVAL_MS;
+    var until = nextAt - Date.now();
+
+    // If already hit 4 today, nudge toward tomorrow
+    if (todays.length >= DOSES_PER_DAY && sameDay(last, Date.now())) {
+      el.hint.innerHTML = "Done for today. Next dose <b>tomorrow</b>.";
+      el.logSub.textContent = "Last dose " + fmtTime(last);
+      return;
+    }
+
+    if (until <= 0) {
+      el.hint.className = "hint ready";
+      el.hint.innerHTML = "Ready for your next dose · last one <b>" + fmtDur(sinceLast) + " ago</b>";
+      el.logSub.textContent = "Last dose " + fmtTime(last);
+    } else if (until <= 30 * 60 * 1000) {
+      el.hint.className = "hint soon";
+      el.hint.innerHTML = "Next dose in about <b>" + fmtDur(until) + "</b>";
+      el.logSub.textContent = "Last dose " + fmtTime(last);
+    } else {
+      el.hint.innerHTML = "Next dose around <b>" + fmtTime(nextAt) + "</b> · in " + fmtDur(until);
+      el.logSub.textContent = "Last dose " + fmtTime(last);
+    }
+  }
+
+  function renderList() {
+    el.list.innerHTML = "";
+    if (doses.length === 0) return;
+    var n = doses.length;
+    for (var i = n - 1; i >= 0; i--) {
+      var ts = doses[i];
+      var row = document.createElement("div");
+      row.className = "log-row";
+
+      var left = document.createElement("span");
+      left.className = "ln";
+      left.textContent = "Dose " + (i + 1);
+
+      var right = document.createElement("span");
+      var t = document.createElement("span");
+      t.className = "lt";
+      t.textContent = fmtTime(ts);
+      var dlabel = document.createElement("span");
+      dlabel.className = "ld";
+      dlabel.textContent = dateLabel(ts);
+      right.appendChild(t);
+      right.appendChild(dlabel);
+
+      row.appendChild(left);
+      row.appendChild(right);
+      el.list.appendChild(row);
+    }
+  }
+
+  function dateLabel(ts) {
+    var today = startOfDay(Date.now());
+    var d = startOfDay(ts);
+    var diffDays = Math.round((today - d) / 86400000);
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    return new Date(ts).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  }
+
+  // ---- toast ----
+  var toastTimer = null;
+  function toast(msg, done) {
+    el.toast.textContent = msg;
+    el.toast.className = "toast show" + (done ? " done" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.className = "toast"; }, 1800);
+  }
+
+  // ---- actions ----
+  function logDose() {
+    var now = Date.now();
+    // guard against accidental rapid double-taps (< 60s)
+    if (doses.length && now - doses[doses.length - 1] < 60000) {
+      toast("Already logged a moment ago");
+      return;
+    }
+    doses.push(now);
+    save();
+    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+    var remaining = TOTAL_DOSES - doses.length;
+    if (remaining <= 0) toast("Course complete! 🎉", true);
+    else toast("Dose logged · " + remaining + " to go");
+    render();
+  }
+
+  function undo() {
+    if (!doses.length) return;
+    doses.pop();
+    save();
+    toast("Last dose removed");
+    render();
+  }
+
+  function reset() {
+    if (!doses.length) return;
+    if (!confirm("Reset the whole course? This clears all logged doses on this device.")) return;
+    doses = [];
+    save();
+    toast("Course reset");
+    render();
+  }
+
+  el.logBtn.addEventListener("click", logDose);
+  el.undoBtn.addEventListener("click", undo);
+  el.resetBtn.addEventListener("click", reset);
+
+  // refresh time-based hint every 30s and on focus
+  function startTick() {
+    if (tickTimer) clearInterval(tickTimer);
+    tickTimer = setInterval(updateHint, 30000);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { doses = load(); render(); }
+  });
+
+  render();
+  startTick();
+})();
+</script>
+</body>
+</html>

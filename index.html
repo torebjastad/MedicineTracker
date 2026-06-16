@@ -13,12 +13,11 @@
     --bg-soft: #1e293b;
     --card: #1e293b;
     --accent: #38bdf8;
-    --accent-strong: #0ea5e9;
     --good: #22c55e;
-    --warn: #f59e0b;
+    --good-soft: rgba(34,197,94,.16);
     --text: #f1f5f9;
     --muted: #94a3b8;
-    --ring-track: #334155;
+    --line: #334155;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -26,342 +25,174 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
+    margin: 0; padding: 0; height: 100%;
     background: radial-gradient(1200px 600px at 50% -10%, #1e293b 0%, var(--bg) 55%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
   }
 
   body {
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
     min-height: 100dvh;
-    padding: calc(16px + var(--safe-top)) 18px calc(16px + var(--safe-bottom));
-    max-width: 480px;
-    margin: 0 auto;
+    padding: calc(14px + var(--safe-top)) 16px calc(14px + var(--safe-bottom));
+    max-width: 480px; margin: 0 auto;
   }
 
-  header {
-    text-align: center;
-    margin-bottom: 8px;
+  header { text-align: center; margin-bottom: 12px; }
+  header h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  header p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+
+  /* Overall progress */
+  .overall { margin: 12px 2px 4px; }
+  .overall-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .overall-row .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .overall-row .val { font-size: 14px; font-weight: 700; }
+  .overall-row .val b { color: var(--good); }
+  .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--good));
+    border-radius: 99px; transition: width .35s ease; }
+
+  /* Day navigator */
+  .nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 8px; }
+  .nav button.arrow {
+    appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    width: 42px; height: 42px; border-radius: 12px; font-size: 20px; line-height: 1; cursor: pointer;
+    flex: 0 0 auto; transition: background .15s, opacity .15s;
   }
-  header h1 {
-    font-size: 20px;
-    font-weight: 700;
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-  header p {
-    margin: 4px 0 0;
-    font-size: 13px;
-    color: var(--muted);
+  .nav button.arrow:active { background: var(--bg-soft); }
+  .nav button.arrow:disabled { opacity: .3; cursor: default; }
+  .nav .nav-center { text-align: center; flex: 1; }
+  .nav .nav-day { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .nav .nav-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .nav .nav-date .badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 99px;
+    background: var(--accent); color: #04263a; font-weight: 700; font-size: 10px; vertical-align: middle;
   }
 
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 18px;
-  }
+  /* Carousel */
+  .carousel { overflow: hidden; touch-action: pan-y; }
+  .track { display: flex; will-change: transform; }
+  .track.animate { transition: transform .3s cubic-bezier(.22,.61,.36,1); }
+  .day { min-width: 100%; padding: 2px; }
 
-  /* Progress ring */
-  .ring-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+  /* Dose grid */
+  .doses { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dose {
+    appearance: none; cursor: pointer; position: relative;
+    border: 2px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 18px; padding: 18px 10px; min-height: 116px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    transition: transform .08s, background .2s, border-color .2s;
   }
-  .ring {
-    position: relative;
-    width: 220px;
-    height: 220px;
+  .dose:active { transform: scale(.96); }
+  .dose .ring {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: transparent; transition: background .2s, border-color .2s, color .2s;
   }
-  .ring svg { transform: rotate(-90deg); display: block; }
-  .ring-center {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  .ring-count {
-    font-size: 56px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.03em;
-  }
-  .ring-count small { font-size: 24px; font-weight: 600; color: var(--muted); }
-  .ring-label {
-    margin-top: 6px;
-    font-size: 13px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
+  .dose .name { font-size: 16px; font-weight: 700; }
+  .dose .time { font-size: 12px; color: var(--muted); }
 
-  /* Today dots */
-  .today {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-  .dots { display: flex; gap: 12px; }
-  .dot {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--ring-track);
-    background: transparent;
-    transition: transform .2s ease, background .2s ease, border-color .2s ease;
-  }
-  .dot.filled {
-    background: var(--good);
-    border-color: var(--good);
-    box-shadow: 0 0 12px rgba(34,197,94,.45);
-  }
-  .today-label { font-size: 13px; color: var(--muted); }
+  .dose.taken { background: var(--good-soft); border-color: var(--good); }
+  .dose.taken .ring { background: var(--good); border-color: var(--good); color: #04130a; }
+  .dose.taken .time { color: var(--good); font-weight: 600; }
 
-  /* Next dose hint */
-  .hint {
-    text-align: center;
-    font-size: 14px;
-    color: var(--muted);
-    min-height: 20px;
-  }
-  .hint b { color: var(--text); font-weight: 600; }
-  .hint.ready b { color: var(--good); }
-  .hint.soon b { color: var(--warn); }
+  .day-count { text-align: center; font-size: 13px; color: var(--muted); margin-top: 14px; min-height: 18px; }
+  .day-count.full { color: var(--good); font-weight: 600; }
 
-  /* Big log button */
-  .log-btn {
-    appearance: none;
-    border: none;
-    width: 100%;
-    padding: 20px;
-    border-radius: 20px;
-    font-size: 19px;
-    font-weight: 700;
-    color: #04263a;
-    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-strong) 100%);
-    box-shadow: 0 10px 30px rgba(14,165,233,.35);
-    cursor: pointer;
-    transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
-    touch-action: manipulation;
+  /* Day dots */
+  .dots { display: flex; justify-content: center; gap: 9px; margin: 18px 0 6px; flex-wrap: wrap; }
+  .dotbtn { appearance: none; border: none; background: none; padding: 4px; cursor: pointer; }
+  .dotbtn .pip {
+    display: block; width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--line); background: transparent; transition: all .2s;
   }
-  .log-btn:active { transform: scale(.97); }
-  .log-btn:disabled {
-    background: var(--bg-soft);
-    color: var(--muted);
-    box-shadow: none;
-    cursor: default;
-  }
-  .log-btn .sub { display: block; font-size: 12px; font-weight: 500; margin-top: 2px; opacity: .8; }
+  .dotbtn .pip.partial { border-color: var(--accent); background: rgba(56,189,248,.35); }
+  .dotbtn .pip.full { border-color: var(--good); background: var(--good); }
+  .dotbtn.current .pip { transform: scale(1.45); box-shadow: 0 0 0 3px rgba(255,255,255,.12); }
 
-  /* Secondary actions */
-  .actions {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 4px;
+  /* Today / settings */
+  .row-actions { display: flex; justify-content: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  .linkbtn {
+    appearance: none; background: none; border: none; color: var(--muted);
+    font-size: 12px; cursor: pointer; padding: 6px 8px; border-radius: 8px;
   }
-  .actions button {
-    flex: 1;
-    appearance: none;
-    background: transparent;
-    border: 1px solid var(--ring-track);
-    color: var(--muted);
-    padding: 10px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s ease, color .15s ease;
-  }
-  .actions button:active { background: var(--bg-soft); color: var(--text); }
-  .actions button:disabled { opacity: .35; cursor: default; }
+  .linkbtn:active { color: var(--text); }
+  .linkbtn.accent { color: var(--accent); font-weight: 600; }
 
-  /* Earlier-dose panel */
-  .past-panel {
-    background: var(--card);
-    border: 1px solid var(--ring-track);
-    border-radius: 16px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 2px;
+  .start-panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+  .start-panel label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .start-panel input[type="date"] {
+    appearance: none; width: 100%; background: var(--bg-soft); border: 1px solid var(--line);
+    color: var(--text); border-radius: 10px; padding: 11px; font-size: 16px; font-family: inherit;
   }
-  .past-panel label {
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .past-panel input[type="datetime-local"] {
-    appearance: none;
-    width: 100%;
-    background: var(--bg-soft);
-    border: 1px solid var(--ring-track);
-    color: var(--text);
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 16px;
-    font-family: inherit;
-  }
-  .past-actions { display: flex; gap: 10px; }
-  .past-actions button {
-    flex: 1;
-    appearance: none;
-    border: none;
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .past-actions #past-add {
-    background: var(--accent);
-    color: #04263a;
-  }
-  .past-actions .ghost {
-    background: transparent;
-    border: 1px solid var(--ring-track);
-    color: var(--muted);
-  }
-  .past-actions button:active { transform: scale(.98); }
+  .start-panel .pa { display: flex; gap: 8px; }
+  .start-panel .pa button { flex: 1; border: none; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .start-panel .pa #start-save { background: var(--accent); color: #04263a; }
+  .start-panel .pa .ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
 
-  /* Log list */
-  .log-list {
-    margin-top: 6px;
-    background: var(--card);
-    border-radius: 16px;
-    padding: 6px 14px;
-    max-height: 168px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .log-list:empty { display: none; }
-  .log-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid rgba(148,163,184,.12);
-    font-size: 14px;
-  }
-  .log-row:last-child { border-bottom: none; }
-  .log-row .ln { color: var(--muted); font-size: 12px; }
-  .log-row .lt { font-weight: 600; }
-  .log-row .ld { color: var(--muted); font-size: 12px; margin-left: 6px; font-weight: 400; }
+  .spacer { flex: 1; }
+  footer { text-align: center; font-size: 11px; color: var(--muted); opacity: .7; margin-top: 12px; }
 
-  footer {
-    text-align: center;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 14px;
-    opacity: .7;
-  }
-
-  /* Toast */
   .toast {
-    position: fixed;
-    left: 50%;
-    bottom: calc(24px + var(--safe-bottom));
+    position: fixed; left: 50%; bottom: calc(22px + var(--safe-bottom));
     transform: translateX(-50%) translateY(20px);
-    background: var(--good);
-    color: #04130a;
-    font-weight: 700;
-    font-size: 14px;
-    padding: 12px 20px;
-    border-radius: 999px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.4);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
-    z-index: 50;
+    background: var(--good); color: #04130a; font-weight: 700; font-size: 14px;
+    padding: 11px 20px; border-radius: 99px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast.done { background: var(--accent); color: #04263a; }
-
-  .complete-banner {
-    background: linear-gradient(180deg, rgba(34,197,94,.18), rgba(34,197,94,.06));
-    border: 1px solid rgba(34,197,94,.4);
-    color: var(--good);
-    text-align: center;
-    padding: 14px;
-    border-radius: 16px;
-    font-weight: 600;
-    font-size: 15px;
-  }
+  .toast.info { background: var(--accent); color: #04263a; }
 </style>
 </head>
 <body>
   <header>
     <h1>Dicloxacillin Orion</h1>
-    <p id="course-line">4× daily · 9-day course</p>
+    <p>4× daily · 9-day course</p>
   </header>
 
-  <div class="main">
-    <div id="complete-banner" class="complete-banner" hidden>
-      🎉 Course complete — all 36 doses logged. Well done!
+  <div class="overall">
+    <div class="overall-row">
+      <span class="lbl">Course progress</span>
+      <span class="val"><b id="ov-count">0</b> / 36 doses</span>
     </div>
-
-    <div class="ring-wrap">
-      <div class="ring">
-        <svg width="220" height="220" viewBox="0 0 220 220">
-          <circle cx="110" cy="110" r="100" fill="none" stroke="var(--ring-track)" stroke-width="14" />
-          <circle id="ring-progress" cx="110" cy="110" r="100" fill="none"
-                  stroke="url(#grad)" stroke-width="14" stroke-linecap="round"
-                  stroke-dasharray="628.3" stroke-dashoffset="628.3" />
-          <defs>
-            <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#38bdf8" />
-              <stop offset="100%" stop-color="#22c55e" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div class="ring-center">
-          <div class="ring-count"><span id="total-count">0</span><small>/36</small></div>
-          <div class="ring-label" id="day-label">Day 1 of 9</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="today">
-      <div class="dots" id="today-dots"></div>
-      <div class="today-label" id="today-label">0 of 4 doses today</div>
-    </div>
-
-    <div class="hint" id="hint"></div>
-
-    <button class="log-btn" id="log-btn">
-      Log a dose now
-      <span class="sub" id="log-sub">Tap when you take a tablet</span>
-    </button>
-
-    <div class="actions">
-      <button id="past-btn">＋ Earlier dose</button>
-      <button id="undo-btn">↩ Undo last</button>
-      <button id="reset-btn">Reset course</button>
-    </div>
-
-    <div class="past-panel" id="past-panel" hidden>
-      <label for="past-input">When did you take it?</label>
-      <input type="datetime-local" id="past-input" />
-      <div class="past-actions">
-        <button id="past-cancel" class="ghost">Cancel</button>
-        <button id="past-add">Add dose</button>
-      </div>
-    </div>
-
-    <div class="log-list" id="log-list"></div>
+    <div class="bar"><i id="ov-bar"></i></div>
   </div>
 
+  <div class="nav">
+    <button class="arrow" id="prev" aria-label="Previous day">‹</button>
+    <div class="nav-center">
+      <div class="nav-day" id="nav-day">Day 1 of 9</div>
+      <div class="nav-date" id="nav-date">—</div>
+    </div>
+    <button class="arrow" id="next" aria-label="Next day">›</button>
+  </div>
+
+  <div class="carousel" id="carousel">
+    <div class="track" id="track"></div>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <div class="row-actions">
+    <button class="linkbtn accent" id="today-btn" hidden>Jump to today</button>
+    <button class="linkbtn" id="start-btn">Day 1 starts —</button>
+    <button class="linkbtn" id="reset-btn">Reset</button>
+  </div>
+
+  <div class="start-panel" id="start-panel" hidden>
+    <label for="start-date">What date did you take your first dose (Day 1)?</label>
+    <input type="date" id="start-date" />
+    <div class="pa">
+      <button class="ghost" id="start-cancel">Cancel</button>
+      <button id="start-save">Save</button>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
   <footer>Saved on this device only · no account needed</footer>
 
   <div class="toast" id="toast"></div>
@@ -370,310 +201,321 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "dicloxacillin.doses.v1";
+  var STORAGE_KEY = "dicloxacillin.course.v2";
+  var OLD_KEY = "dicloxacillin.doses.v1";
   var DOSES_PER_DAY = 4;
   var COURSE_DAYS = 9;
-  var TOTAL_DOSES = DOSES_PER_DAY * COURSE_DAYS; // 36
-  var INTERVAL_MS = 6 * 60 * 60 * 1000;          // ~6h between doses
-  var RING_CIRC = 2 * Math.PI * 100;             // 628.3
-
-  // doses = array of epoch-ms timestamps, ascending
-  var doses = load();
-  var tickTimer = null;
-
-  // ---- storage ----
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      var arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.filter(function (n) { return typeof n === "number"; }) : [];
-    } catch (e) { return []; }
-  }
-  function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(doses)); } catch (e) {}
-  }
+  var TOTAL = DOSES_PER_DAY * COURSE_DAYS; // 36
+  var SLOT_TIMES = [[8, 0], [13, 0], [18, 0], [22, 0]]; // suggested dose times
 
   // ---- date helpers ----
-  function startOfDay(ts) {
-    var d = new Date(ts);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function startOfDay(ts) { var d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function isoOf(ts) { var d = new Date(ts); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function todayISO() { return isoOf(Date.now()); }
+  function parseISO(iso) { var p = iso.split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2]); } // local midnight
+  function dayDate(di) { var d = parseISO(state.start); d.setDate(d.getDate() + di); return d; }
+  function todayIndex() {
+    return Math.round((startOfDay(Date.now()) - parseISO(state.start).getTime()) / 86400000);
   }
-  // Which course-day (1-based) is the dose's day relative to the first dose's calendar day.
-  function courseDayOf(ts) {
-    if (doses.length === 0) return 1;
-    var diff = startOfDay(ts) - startOfDay(doses[0]);
-    return Math.floor(diff / 86400000) + 1;
+  function slotTime(di, slot) {
+    var d = dayDate(di); d.setHours(SLOT_TIMES[slot][0], SLOT_TIMES[slot][1], 0, 0); return d.getTime();
   }
-  function dosesToday() {
-    var today = startOfDay(Date.now());
-    return doses.filter(function (ts) { return startOfDay(ts) === today; });
+  function fmtTs(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function slotLabel(slot) { return fmtTs(slotTime(0, slot)); }
+  function fmtDayDate(di) { return dayDate(di).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }); }
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+  // ---- state ----
+  function emptyGrid() {
+    var g = [];
+    for (var i = 0; i < COURSE_DAYS; i++) g.push([null, null, null, null]);
+    return g;
   }
-  function fmtTime(ts) {
-    return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  function migrateFromV1() {
+    var grid = emptyGrid();
+    var start = todayISO();
+    try {
+      var raw = localStorage.getItem(OLD_KEY);
+      if (raw) {
+        var arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr = arr.filter(function (n) { return typeof n === "number"; }).sort(function (a, b) { return a - b; });
+          if (arr.length) {
+            start = isoOf(arr[0]);
+            var startMs = startOfDay(arr[0]);
+            arr.forEach(function (ts) {
+              var di = Math.round((startOfDay(ts) - startMs) / 86400000);
+              if (di >= 0 && di < COURSE_DAYS) {
+                var slots = grid[di];
+                for (var s = 0; s < DOSES_PER_DAY; s++) { if (slots[s] == null) { slots[s] = ts; break; } }
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {}
+    return { start: start, grid: grid };
   }
-  function fmtDur(ms) {
-    var mins = Math.round(ms / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return mins + " min";
-    var h = Math.floor(mins / 60), m = mins % 60;
-    return m === 0 ? h + "h" : h + "h " + m + "m";
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && typeof s.start === "string" && Array.isArray(s.grid)) {
+          // normalize shape
+          var grid = emptyGrid();
+          for (var d = 0; d < COURSE_DAYS; d++) {
+            var src = s.grid[d] || [];
+            for (var i = 0; i < DOSES_PER_DAY; i++) grid[d][i] = typeof src[i] === "number" ? src[i] : null;
+          }
+          return { start: s.start, grid: grid };
+        }
+      }
+    } catch (e) {}
+    var migrated = migrateFromV1();
+    return migrated;
   }
-  function sameDay(a, b) { return startOfDay(a) === startOfDay(b); }
 
-  // ---- render ----
-  var el = {
-    ring: document.getElementById("ring-progress"),
-    total: document.getElementById("total-count"),
-    dayLabel: document.getElementById("day-label"),
-    dots: document.getElementById("today-dots"),
-    todayLabel: document.getElementById("today-label"),
-    hint: document.getElementById("hint"),
-    logBtn: document.getElementById("log-btn"),
-    logSub: document.getElementById("log-sub"),
-    undoBtn: document.getElementById("undo-btn"),
-    resetBtn: document.getElementById("reset-btn"),
-    list: document.getElementById("log-list"),
-    banner: document.getElementById("complete-banner"),
-    toast: document.getElementById("toast"),
-    pastBtn: document.getElementById("past-btn"),
-    pastPanel: document.getElementById("past-panel"),
-    pastInput: document.getElementById("past-input"),
-    pastAdd: document.getElementById("past-add"),
-    pastCancel: document.getElementById("past-cancel")
-  };
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
 
-  function render() {
-    var total = doses.length;
-    var todays = dosesToday();
-    var done = total >= TOTAL_DOSES;
+  var state = loadState();
+  var view = clamp(todayIndex(), 0, COURSE_DAYS - 1);
 
-    // ring
-    var frac = Math.min(total / TOTAL_DOSES, 1);
-    el.ring.style.strokeDashoffset = String(RING_CIRC * (1 - frac));
-    el.total.textContent = String(total);
+  // ---- elements ----
+  var carousel = document.getElementById("carousel");
+  var track = document.getElementById("track");
+  var dotsWrap = document.getElementById("dots");
+  var ovCount = document.getElementById("ov-count");
+  var ovBar = document.getElementById("ov-bar");
+  var navDay = document.getElementById("nav-day");
+  var navDate = document.getElementById("nav-date");
+  var prevBtn = document.getElementById("prev");
+  var nextBtn = document.getElementById("next");
+  var todayBtn = document.getElementById("today-btn");
+  var startBtn = document.getElementById("start-btn");
+  var resetBtn = document.getElementById("reset-btn");
+  var startPanel = document.getElementById("start-panel");
+  var startInput = document.getElementById("start-date");
+  var startSave = document.getElementById("start-save");
+  var startCancel = document.getElementById("start-cancel");
+  var toastEl = document.getElementById("toast");
 
-    // day label
-    var curDay = total === 0 ? 1 : Math.min(courseDayOf(Date.now()), COURSE_DAYS);
-    el.dayLabel.textContent = total === 0 ? "Not started" : "Day " + curDay + " of " + COURSE_DAYS;
+  // ---- build the day cards once ----
+  function buildTrack() {
+    track.innerHTML = "";
+    for (var d = 0; d < COURSE_DAYS; d++) {
+      var day = document.createElement("div");
+      day.className = "day";
 
-    // today dots
-    el.dots.innerHTML = "";
-    for (var i = 0; i < DOSES_PER_DAY; i++) {
-      var d = document.createElement("div");
-      d.className = "dot" + (i < todays.length ? " filled" : "");
-      el.dots.appendChild(d);
+      var doses = document.createElement("div");
+      doses.className = "doses";
+      for (var s = 0; s < DOSES_PER_DAY; s++) {
+        var b = document.createElement("button");
+        b.className = "dose";
+        b.dataset.day = d;
+        b.dataset.slot = s;
+        b.innerHTML =
+          '<span class="ring">✓</span>' +
+          '<span class="name">Dose ' + (s + 1) + '</span>' +
+          '<span class="time"></span>';
+        doses.appendChild(b);
+      }
+      day.appendChild(doses);
+
+      var count = document.createElement("div");
+      count.className = "day-count";
+      day.appendChild(count);
+
+      track.appendChild(day);
     }
-    var extra = todays.length > DOSES_PER_DAY ? " (+" + (todays.length - DOSES_PER_DAY) + " extra)" : "";
-    el.todayLabel.textContent = todays.length + " of " + DOSES_PER_DAY + " doses today" + extra;
-
-    // complete banner
-    el.banner.hidden = !done;
-
-    // hint + button state
-    updateHint();
-
-    // undo availability
-    el.undoBtn.disabled = total === 0;
-
-    // log list (most recent first)
-    renderList();
   }
 
-  function updateHint() {
-    var total = doses.length;
-    var todays = dosesToday();
-    var last = total ? doses[total - 1] : null;
-    el.hint.className = "hint";
+  // ---- render dynamic state ----
+  function dayCount(d) {
+    var c = 0, slots = state.grid[d];
+    for (var i = 0; i < DOSES_PER_DAY; i++) if (slots[i] != null) c++;
+    return c;
+  }
+  function totalCount() {
+    var t = 0;
+    for (var d = 0; d < COURSE_DAYS; d++) t += dayCount(d);
+    return t;
+  }
 
-    if (total >= TOTAL_DOSES) {
-      el.hint.innerHTML = "All doses taken — you can stop here.";
-      el.logBtn.disabled = false; // still allow extra if prescribed
-      el.logBtn.firstChild.nodeValue = "Log an extra dose";
-      el.logSub.textContent = "Course already complete";
-      return;
+  function renderStates() {
+    var ti = todayIndex();
+    // dose buttons + per-day count
+    var dayEls = track.children;
+    for (var d = 0; d < COURSE_DAYS; d++) {
+      var dayEl = dayEls[d];
+      var btns = dayEl.querySelectorAll(".dose");
+      for (var s = 0; s < DOSES_PER_DAY; s++) {
+        var ts = state.grid[d][s];
+        var btn = btns[s];
+        var timeEl = btn.querySelector(".time");
+        if (ts != null) {
+          btn.classList.add("taken");
+          timeEl.textContent = fmtTs(ts);
+        } else {
+          btn.classList.remove("taken");
+          timeEl.textContent = slotLabel(s);
+        }
+      }
+      var c = dayCount(d);
+      var countEl = dayEl.querySelector(".day-count");
+      if (c >= DOSES_PER_DAY) { countEl.textContent = "All 4 doses taken ✓"; countEl.classList.add("full"); }
+      else { countEl.textContent = c + " of 4 doses taken"; countEl.classList.remove("full"); }
     }
 
-    el.logBtn.disabled = false;
+    // overall
+    var tot = totalCount();
+    ovCount.textContent = String(tot);
+    ovBar.style.width = (tot / TOTAL * 100) + "%";
 
-    if (!last) {
-      el.hint.innerHTML = "Tap below when you take your <b>first tablet</b>.";
-      el.logBtn.firstChild.nodeValue = "Log first dose";
-      el.logSub.textContent = "Starts your 9-day course";
-      return;
+    // navigator
+    navDay.textContent = "Day " + (view + 1) + " of " + COURSE_DAYS;
+    var badge = (view === ti) ? ' <span class="badge">Today</span>' : "";
+    navDate.innerHTML = fmtDayDate(view) + badge;
+    prevBtn.disabled = view <= 0;
+    nextBtn.disabled = view >= COURSE_DAYS - 1;
+
+    // jump-to-today visibility
+    todayBtn.hidden = (view === ti) || ti < 0 || ti > COURSE_DAYS - 1;
+
+    // dots
+    dotsWrap.innerHTML = "";
+    for (var i = 0; i < COURSE_DAYS; i++) {
+      var c2 = dayCount(i);
+      var btn2 = document.createElement("button");
+      btn2.className = "dotbtn" + (i === view ? " current" : "");
+      var pipCls = c2 >= DOSES_PER_DAY ? "full" : (c2 > 0 ? "partial" : "");
+      btn2.innerHTML = '<span class="pip ' + pipCls + '"></span>';
+      btn2.dataset.day = i;
+      dotsWrap.appendChild(btn2);
     }
 
-    el.logBtn.firstChild.nodeValue = "Log a dose now";
+    // start label
+    startBtn.textContent = "Day 1 starts " + dayDate(0).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  }
 
-    var sinceLast = Date.now() - last;
-    var nextAt = last + INTERVAL_MS;
-    var until = nextAt - Date.now();
+  // ---- carousel positioning ----
+  function setView(i, animate) {
+    view = clamp(i, 0, COURSE_DAYS - 1);
+    track.classList.toggle("animate", !!animate);
+    track.style.transform = "translateX(" + (-view * 100) + "%)";
+    renderStates();
+  }
 
-    // If already hit 4 today, nudge toward tomorrow
-    if (todays.length >= DOSES_PER_DAY && sameDay(last, Date.now())) {
-      el.hint.innerHTML = "Done for today. Next dose <b>tomorrow</b>.";
-      el.logSub.textContent = "Last dose " + fmtTime(last);
-      return;
-    }
-
-    if (until <= 0) {
-      el.hint.className = "hint ready";
-      el.hint.innerHTML = "Ready for your next dose · last one <b>" + fmtDur(sinceLast) + " ago</b>";
-      el.logSub.textContent = "Last dose " + fmtTime(last);
-    } else if (until <= 30 * 60 * 1000) {
-      el.hint.className = "hint soon";
-      el.hint.innerHTML = "Next dose in about <b>" + fmtDur(until) + "</b>";
-      el.logSub.textContent = "Last dose " + fmtTime(last);
+  // ---- toggle a dose ----
+  function toggle(d, s) {
+    var slots = state.grid[d];
+    if (slots[s] != null) {
+      slots[s] = null;
     } else {
-      el.hint.innerHTML = "Next dose around <b>" + fmtTime(nextAt) + "</b> · in " + fmtDur(until);
-      el.logSub.textContent = "Last dose " + fmtTime(last);
+      slots[s] = (d === todayIndex()) ? Date.now() : slotTime(d, s);
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+      var tot = totalCount();
+      if (tot >= TOTAL) toast("Course complete! 🎉", true);
     }
-  }
-
-  function renderList() {
-    el.list.innerHTML = "";
-    if (doses.length === 0) return;
-    var n = doses.length;
-    for (var i = n - 1; i >= 0; i--) {
-      var ts = doses[i];
-      var row = document.createElement("div");
-      row.className = "log-row";
-
-      var left = document.createElement("span");
-      left.className = "ln";
-      left.textContent = "Dose " + (i + 1);
-
-      var right = document.createElement("span");
-      var t = document.createElement("span");
-      t.className = "lt";
-      t.textContent = fmtTime(ts);
-      var dlabel = document.createElement("span");
-      dlabel.className = "ld";
-      dlabel.textContent = dateLabel(ts);
-      right.appendChild(t);
-      right.appendChild(dlabel);
-
-      row.appendChild(left);
-      row.appendChild(right);
-      el.list.appendChild(row);
-    }
-  }
-
-  function dateLabel(ts) {
-    var today = startOfDay(Date.now());
-    var d = startOfDay(ts);
-    var diffDays = Math.round((today - d) / 86400000);
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    return new Date(ts).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+    save();
+    renderStates();
   }
 
   // ---- toast ----
   var toastTimer = null;
-  function toast(msg, done) {
-    el.toast.textContent = msg;
-    el.toast.className = "toast show" + (done ? " done" : "");
+  function toast(msg, info) {
+    toastEl.textContent = msg;
+    toastEl.className = "toast show" + (info ? " info" : "");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.toast.className = "toast"; }, 1800);
+    toastTimer = setTimeout(function () { toastEl.className = "toast"; }, 1700);
   }
 
-  // ---- actions ----
-  // Keep doses ascending so day/first-dose logic stays correct after backfilling.
-  function insertSorted(ts) {
-    var i = doses.length;
-    while (i > 0 && doses[i - 1] > ts) i--;
-    doses.splice(i, 0, ts);
-    return i;
-  }
+  // ---- events: tap a dose (with swipe guard) ----
+  var dragged = false;
+  track.addEventListener("click", function (e) {
+    var btn = e.target.closest(".dose");
+    if (!btn) return;
+    if (dragged) { dragged = false; return; }
+    toggle(+btn.dataset.day, +btn.dataset.slot);
+  });
 
-  // Format a timestamp as a local "YYYY-MM-DDTHH:MM" value for datetime-local inputs.
-  function toLocalInput(ts) {
-    var d = new Date(ts);
-    var p = function (n) { return String(n).padStart(2, "0"); };
-    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
-           "T" + p(d.getHours()) + ":" + p(d.getMinutes());
-  }
+  dotsWrap.addEventListener("click", function (e) {
+    var b = e.target.closest(".dotbtn");
+    if (!b) return;
+    setView(+b.dataset.day, true);
+  });
 
-  function openPastPanel() {
-    var now = Date.now();
-    el.pastInput.value = toLocalInput(now);
-    el.pastInput.max = toLocalInput(now);
-    el.pastPanel.hidden = false;
-    el.pastInput.focus();
-    el.pastPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-  function closePastPanel() { el.pastPanel.hidden = true; }
+  prevBtn.addEventListener("click", function () { setView(view - 1, true); });
+  nextBtn.addEventListener("click", function () { setView(view + 1, true); });
+  todayBtn.addEventListener("click", function () { setView(todayIndex(), true); });
 
-  function addPastDose() {
-    if (!el.pastInput.value) { toast("Pick a date and time"); return; }
-    var ts = new Date(el.pastInput.value).getTime();
-    if (isNaN(ts)) { toast("Invalid date"); return; }
-    if (ts > Date.now() + 60000) { toast("That time is in the future"); return; }
-    // Avoid accidental duplicates within a minute of an existing dose.
-    var dup = doses.some(function (d) { return Math.abs(d - ts) < 60000; });
-    if (dup) { toast("A dose is already logged then"); return; }
-    insertSorted(ts);
+  // ---- swipe ----
+  var startX = 0, startY = 0, dragging = false, width = 0;
+  carousel.addEventListener("touchstart", function (e) {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    width = carousel.clientWidth; dragging = true; dragged = false;
+    track.classList.remove("animate");
+  }, { passive: true });
+
+  carousel.addEventListener("touchmove", function (e) {
+    if (!dragging) return;
+    var dx = e.touches[0].clientX - startX;
+    var dy = e.touches[0].clientY - startY;
+    if (!dragged && Math.abs(dx) < Math.abs(dy)) { return; } // vertical scroll
+    if (Math.abs(dx) > 8) dragged = true;
+    // resist at edges
+    if ((view === 0 && dx > 0) || (view === COURSE_DAYS - 1 && dx < 0)) dx *= 0.3;
+    track.style.transform = "translateX(" + (-view * width + dx) + "px)";
+  }, { passive: true });
+
+  carousel.addEventListener("touchend", function (e) {
+    if (!dragging) return;
+    dragging = false;
+    var dx = e.changedTouches[0].clientX - startX;
+    var threshold = Math.min(60, width * 0.18);
+    if (dx <= -threshold && view < COURSE_DAYS - 1) setView(view + 1, true);
+    else if (dx >= threshold && view > 0) setView(view - 1, true);
+    else setView(view, true);
+  });
+
+  // ---- start-date editing ----
+  startBtn.addEventListener("click", function () {
+    if (startPanel.hidden) { startInput.value = state.start; startPanel.hidden = false; }
+    else startPanel.hidden = true;
+  });
+  startCancel.addEventListener("click", function () { startPanel.hidden = true; });
+  startSave.addEventListener("click", function () {
+    if (!startInput.value) { toast("Pick a date"); return; }
+    state.start = startInput.value;
     save();
-    closePastPanel();
-    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
-    toast("Added dose · " + fmtTime(ts) + " " + dateLabel(ts).toLowerCase());
-    render();
-  }
+    startPanel.hidden = true;
+    setView(clamp(todayIndex(), 0, COURSE_DAYS - 1), false);
+    toast("Start date updated", true);
+  });
 
-  function logDose() {
-    var now = Date.now();
-    // guard against accidental rapid double-taps (< 60s)
-    if (doses.length && now - doses[doses.length - 1] < 60000) {
-      toast("Already logged a moment ago");
-      return;
-    }
-    doses.push(now);
+  resetBtn.addEventListener("click", function () {
+    if (!confirm("Reset the whole course? This clears every logged dose on this device.")) return;
+    state = { start: todayISO(), grid: emptyGrid() };
     save();
-    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
-    var remaining = TOTAL_DOSES - doses.length;
-    if (remaining <= 0) toast("Course complete! 🎉", true);
-    else toast("Dose logged · " + remaining + " to go");
-    render();
-  }
-
-  function undo() {
-    if (!doses.length) return;
-    doses.pop();
-    save();
-    toast("Last dose removed");
-    render();
-  }
-
-  function reset() {
-    if (!doses.length) return;
-    if (!confirm("Reset the whole course? This clears all logged doses on this device.")) return;
-    doses = [];
-    save();
+    setView(0, false);
     toast("Course reset");
-    render();
-  }
-
-  el.logBtn.addEventListener("click", logDose);
-  el.undoBtn.addEventListener("click", undo);
-  el.resetBtn.addEventListener("click", reset);
-  el.pastBtn.addEventListener("click", function () {
-    if (el.pastPanel.hidden) openPastPanel(); else closePastPanel();
   });
-  el.pastAdd.addEventListener("click", addPastDose);
-  el.pastCancel.addEventListener("click", closePastPanel);
 
-  // refresh time-based hint every 30s and on focus
-  function startTick() {
-    if (tickTimer) clearInterval(tickTimer);
-    tickTimer = setInterval(updateHint, 30000);
-  }
+  // recalc transform on resize/orientation
+  window.addEventListener("resize", function () { setView(view, false); });
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { doses = load(); render(); }
+    if (!document.hidden) { state = loadState(); buildTrack(); setView(clamp(view, 0, COURSE_DAYS - 1), false); }
   });
 
-  render();
-  startTick();
+  // ---- init ----
+  buildTrack();
+  setView(view, false);
 })();
 </script>
 </body>

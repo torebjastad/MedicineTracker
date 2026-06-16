@@ -1,26 +1,28 @@
 # MedicineTracker
 
-A tiny, mobile-optimized web app to track a **Dicloxacillin Orion** course:
-**4 doses a day for 9 days (36 doses total)**.
+A tiny, mobile-optimized web app to track **one or more medicines**, each with
+its own schedule (doses per day, course length, start date, and dose times).
 
 ## Features
 
-- **One-tap logging** — a single big button records each dose with a timestamp.
-- **Progress ring** — shows total doses taken out of 36 and the current day (1–9).
-- **Today at a glance** — four dots fill in as you take the day's doses.
-- **Smart next-dose hint** — suggests roughly when the next dose is due (~6h spacing),
-  and tells you when you're done for the day.
-- **Undo / Reset** — remove an accidental tap or start the course over.
-- **Dose history** — a scrollable list of every logged dose with time and day.
+- **Multiple medicines** — switch between them with the chips at the top, or
+  add a new one with its own independent schedule.
+- **Add / edit schedule** — set name, doses per day, course length (days),
+  first-dose date, and the time of each dose. Edit or delete any time.
+- **Swipe by day** — a card per day with one button per dose; tap to mark taken,
+  tap again to undo. Swipe, use the arrows, or tap a day dot to navigate.
+- **Progress at a glance** — overall progress bar, per-day count, and a
+  `taken/total` badge on each medicine chip.
+- No double-tap zoom, large tap targets, works added to the home screen.
 
 ## No backend, no account
 
-Everything runs in a single `index.html` file. Your data is stored only in this
-browser's `localStorage` on your device — there is no server, database, or login.
-Clearing your browser data (or using private browsing) will erase the log.
+Everything runs in a single `index.html`. Your data lives only in this browser's
+`localStorage` on your device — there is no server, database, or login. Clearing
+your browser data (or private browsing) erases the log.
 
 ## Usage
 
-Open `index.html` in a mobile browser. For a home-screen app feel, use your
-browser's **"Add to Home Screen"** option. It also works hosted on any static
-host (e.g. GitHub Pages) — no build step required.
+Open `index.html` in a mobile browser (or "Add to Home Screen"). Also works on
+any static host such as GitHub Pages — no build step. Live:
+https://torebjastad.github.io/MedicineTracker/

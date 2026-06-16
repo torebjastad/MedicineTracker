@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f172a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>Dicloxacillin Tracker</title>
+<title>Medicine Tracker</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -31,17 +31,32 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overscroll-behavior: none;
+    touch-action: manipulation; /* disable double-tap-to-zoom */
   }
 
   body {
     display: flex; flex-direction: column;
     min-height: 100dvh;
-    padding: calc(14px + var(--safe-top)) 16px calc(14px + var(--safe-bottom));
+    padding: calc(12px + var(--safe-top)) 16px calc(14px + var(--safe-bottom));
     max-width: 480px; margin: 0 auto;
   }
 
-  header { text-align: center; margin-bottom: 12px; }
-  header h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  /* Medicine switcher */
+  .med-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+  .med-bar::-webkit-scrollbar { display: none; }
+  .med-chip {
+    appearance: none; flex: 0 0 auto; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); color: var(--text);
+    border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 8px; transition: border-color .15s, background .15s;
+  }
+  .med-chip.active { border-color: var(--accent); background: rgba(56,189,248,.12); }
+  .med-chip .mini { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .med-chip.active .mini { color: var(--accent); }
+  .med-chip.add { color: var(--accent); border-style: dashed; }
+
+  header { text-align: center; margin-bottom: 6px; }
+  header h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
   header p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 
   /* Overall progress */
@@ -83,20 +98,19 @@
   .dose {
     appearance: none; cursor: pointer; position: relative;
     border: 2px solid var(--line); background: var(--card); color: var(--text);
-    border-radius: 18px; padding: 18px 10px; min-height: 116px;
+    border-radius: 18px; padding: 16px 10px; min-height: 104px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     transition: transform .08s, background .2s, border-color .2s;
   }
   .dose:active { transform: scale(.96); }
   .dose .ring {
-    width: 34px; height: 34px; border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%;
     border: 2px solid var(--line);
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; color: transparent; transition: background .2s, border-color .2s, color .2s;
+    font-size: 19px; color: transparent; transition: background .2s, border-color .2s, color .2s;
   }
-  .dose .name { font-size: 16px; font-weight: 700; }
+  .dose .name { font-size: 15px; font-weight: 700; }
   .dose .time { font-size: 12px; color: var(--muted); }
-
   .dose.taken { background: var(--good-soft); border-color: var(--good); }
   .dose.taken .ring { background: var(--good); border-color: var(--good); color: #04130a; }
   .dose.taken .time { color: var(--good); font-weight: 600; }
@@ -115,7 +129,7 @@
   .dotbtn .pip.full { border-color: var(--good); background: var(--good); }
   .dotbtn.current .pip { transform: scale(1.45); box-shadow: 0 0 0 3px rgba(255,255,255,.12); }
 
-  /* Today / settings */
+  /* Action row */
   .row-actions { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   .linkbtn {
     appearance: none; background: var(--card); border: 1px solid var(--line); color: var(--text);
@@ -124,39 +138,45 @@
   }
   .linkbtn:active { background: var(--bg-soft); }
   .linkbtn.accent { color: #04263a; background: var(--accent); border-color: var(--accent); }
-  /* Start-day button: make it obviously editable */
-  #start-btn { border-color: var(--accent); }
-  #start-btn .chg {
-    background: var(--accent); color: #04263a; border-radius: 999px;
-    padding: 2px 9px; font-size: 11px; font-weight: 700;
-  }
+  #edit-btn { border-color: var(--accent); }
 
-  .start-panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
-  .start-panel label { font-size: 12px; color: var(--muted); font-weight: 600; }
-  .start-panel input[type="date"] {
-    appearance: none; flex: 1; min-width: 0; background: var(--bg-soft); border: 1px solid var(--line);
-    color: var(--text); border-radius: 10px; padding: 11px; font-size: 16px; font-family: inherit; text-align: center;
+  /* Panels (form) */
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+  .panel h2 { margin: 0; font-size: 16px; font-weight: 700; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .field input[type="text"], .field input[type="number"], .field input[type="date"] {
+    appearance: none; width: 100%; background: var(--bg-soft); border: 1px solid var(--line);
+    color: var(--text); border-radius: 10px; padding: 12px; font-size: 16px; font-family: inherit;
   }
-  .date-stepper { display: flex; align-items: stretch; gap: 8px; }
-  .date-stepper .step {
-    appearance: none; flex: 0 0 auto; width: 48px; border: 1px solid var(--line);
-    background: var(--bg-soft); color: var(--text); border-radius: 10px;
-    font-size: 22px; line-height: 1; cursor: pointer; transition: background .15s, opacity .15s;
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button {
+    appearance: none; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg-soft); color: var(--text); font-size: 22px; line-height: 1; cursor: pointer;
   }
-  .date-stepper .step:active { background: var(--line); }
-  .date-stepper .step:disabled { opacity: .3; cursor: default; }
-  .date-preview { text-align: center; font-size: 13px; color: var(--accent); font-weight: 600; min-height: 18px; }
-  .time-rows { display: flex; flex-direction: column; gap: 8px; }
-  .time-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .time-row span { font-size: 14px; font-weight: 600; }
+  .stepper button:active { background: var(--line); }
+  .stepper .val { flex: 1; text-align: center; font-size: 18px; font-weight: 700; }
+  .times-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .time-row { display: flex; align-items: center; gap: 8px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .time-row label { font-size: 12px; color: var(--muted); font-weight: 600; flex: 0 0 auto; }
   .time-row input[type="time"] {
-    appearance: none; background: var(--bg-soft); border: 1px solid var(--line);
-    color: var(--text); border-radius: 10px; padding: 9px 11px; font-size: 16px; font-family: inherit;
+    appearance: none; flex: 1; min-width: 0; background: transparent; border: none; color: var(--text);
+    font-size: 16px; font-family: inherit; text-align: right;
   }
-  .start-panel .pa { display: flex; gap: 8px; }
-  .start-panel .pa button { flex: 1; border: none; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  .start-panel .pa #start-save { background: var(--accent); color: #04263a; }
-  .start-panel .pa .ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .pa { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pa button { flex: 1; min-width: 90px; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .pa #mf-save { background: var(--accent); color: #04263a; }
+  .pa .ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .pa .danger { background: transparent; border: 1px solid #ef4444; color: #ef4444; flex: 0 0 auto; min-width: 0; padding: 12px 16px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 10px; }
+  .empty .big { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .empty p { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  .empty button {
+    appearance: none; background: var(--accent); color: #04263a; border: none;
+    border-radius: 14px; padding: 14px 22px; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
 
   .spacer { flex: 1; }
   footer { text-align: center; font-size: 11px; color: var(--muted); opacity: .7; margin-top: 12px; }
@@ -173,66 +193,86 @@
 </style>
 </head>
 <body>
-  <header>
-    <h1>Dicloxacillin Orion</h1>
-    <p>4× daily · 9-day course</p>
-  </header>
+  <div class="med-bar" id="med-bar"></div>
 
-  <div class="overall">
-    <div class="overall-row">
-      <span class="lbl">Course progress</span>
-      <span class="val"><b id="ov-count">0</b> / 36 doses</span>
+  <!-- Empty state -->
+  <div class="empty" id="empty" hidden>
+    <div class="big">No medicines yet</div>
+    <p>Add a medicine and its schedule to start tracking your doses.</p>
+    <button id="empty-add">＋ Add medicine</button>
+  </div>
+
+  <!-- Main tracker -->
+  <div id="main" hidden>
+    <header>
+      <h1 id="med-name">—</h1>
+      <p id="med-sub">—</p>
+    </header>
+
+    <div class="overall">
+      <div class="overall-row">
+        <span class="lbl">Course progress</span>
+        <span class="val"><b id="ov-count">0</b> / <span id="ov-total">0</span> doses</span>
+      </div>
+      <div class="bar"><i id="ov-bar"></i></div>
     </div>
-    <div class="bar"><i id="ov-bar"></i></div>
-  </div>
 
-  <div class="nav">
-    <button class="arrow" id="prev" aria-label="Previous day">‹</button>
-    <div class="nav-center">
-      <div class="nav-day" id="nav-day">Day 1 of 9</div>
-      <div class="nav-date" id="nav-date">—</div>
+    <div class="nav">
+      <button class="arrow" id="prev" aria-label="Previous day">‹</button>
+      <div class="nav-center">
+        <div class="nav-day" id="nav-day">Day 1</div>
+        <div class="nav-date" id="nav-date">—</div>
+      </div>
+      <button class="arrow" id="next" aria-label="Next day">›</button>
     </div>
-    <button class="arrow" id="next" aria-label="Next day">›</button>
-  </div>
 
-  <div class="carousel" id="carousel">
-    <div class="track" id="track"></div>
-  </div>
-
-  <div class="dots" id="dots"></div>
-
-  <div class="row-actions">
-    <button class="linkbtn accent" id="today-btn" hidden>Jump to today</button>
-    <button class="linkbtn" id="start-btn">Day 1 starts —</button>
-    <button class="linkbtn" id="times-btn">🕐 Times</button>
-    <button class="linkbtn" id="reset-btn">Reset</button>
-  </div>
-
-  <div class="start-panel" id="start-panel" hidden>
-    <label for="start-date">What date did you take your first dose (Day 1)?</label>
-    <div class="date-stepper">
-      <button class="step" id="start-prev" aria-label="Previous day">‹</button>
-      <input type="date" id="start-date" />
-      <button class="step" id="start-next" aria-label="Next day">›</button>
+    <div class="carousel" id="carousel">
+      <div class="track" id="track"></div>
     </div>
-    <div class="date-preview" id="date-preview">—</div>
+
+    <div class="dots" id="dots"></div>
+
+    <div class="row-actions">
+      <button class="linkbtn accent" id="today-btn" hidden>Jump to today</button>
+      <button class="linkbtn" id="edit-btn">✎ Edit schedule</button>
+    </div>
+  </div>
+
+  <!-- Add / edit medicine form -->
+  <div class="panel" id="med-form" hidden>
+    <h2 id="mf-title">Add medicine</h2>
+    <div class="field">
+      <label for="mf-name">Medicine name</label>
+      <input type="text" id="mf-name" placeholder="e.g. Dicloxacillin Orion" />
+    </div>
+    <div class="field">
+      <label>Doses per day</label>
+      <div class="stepper">
+        <button id="mf-perday-dn" aria-label="Fewer">−</button>
+        <div class="val" id="mf-perday-val">4</div>
+        <button id="mf-perday-up" aria-label="More">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Course length (days)</label>
+      <div class="stepper">
+        <button id="mf-days-dn" aria-label="Fewer">−</button>
+        <div class="val" id="mf-days-val">9</div>
+        <button id="mf-days-up" aria-label="More">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="mf-start">First dose date (Day 1)</label>
+      <input type="date" id="mf-start" />
+    </div>
+    <div class="field">
+      <label>Dose times</label>
+      <div class="times-grid" id="mf-times"></div>
+    </div>
     <div class="pa">
-      <button class="ghost" id="start-cancel">Cancel</button>
-      <button id="start-save">Save</button>
-    </div>
-  </div>
-
-  <div class="start-panel" id="times-panel" hidden>
-    <label>Default dose times (applies to every day)</label>
-    <div class="time-rows">
-      <div class="time-row"><span>Dose 1</span><input type="time" id="t0" /></div>
-      <div class="time-row"><span>Dose 2</span><input type="time" id="t1" /></div>
-      <div class="time-row"><span>Dose 3</span><input type="time" id="t2" /></div>
-      <div class="time-row"><span>Dose 4</span><input type="time" id="t3" /></div>
-    </div>
-    <div class="pa">
-      <button class="ghost" id="times-cancel">Cancel</button>
-      <button id="times-save">Save</button>
+      <button class="danger" id="mf-delete" hidden>Delete</button>
+      <button class="ghost" id="mf-cancel">Cancel</button>
+      <button id="mf-save">Save</button>
     </div>
   </div>
 
@@ -245,242 +285,159 @@
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "dicloxacillin.course.v2";
-  var OLD_KEY = "dicloxacillin.doses.v1";
-  var DOSES_PER_DAY = 4;
-  var COURSE_DAYS = 9;
-  var TOTAL = DOSES_PER_DAY * COURSE_DAYS; // 36
-  var DEFAULT_TIMES = ["08:00", "13:00", "18:00", "22:00"]; // editable dose times
+  var KEY = "medtracker.v3";
+  var V2_KEY = "dicloxacillin.course.v2";
+  var V1_KEY = "dicloxacillin.doses.v1";
+  var MAX_PER_DAY = 8, MAX_DAYS = 60;
 
-  // ---- date helpers ----
+  // ---- date / format helpers ----
   function pad(n) { return String(n).padStart(2, "0"); }
   function startOfDay(ts) { var d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
   function isoOf(ts) { var d = new Date(ts); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function todayISO() { return isoOf(Date.now()); }
-  function parseISO(iso) { var p = iso.split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2]); } // local midnight
-  function dayDate(di) { var d = parseISO(state.start); d.setDate(d.getDate() + di); return d; }
-  function todayIndex() {
-    return Math.round((startOfDay(Date.now()) - parseISO(state.start).getTime()) / 86400000);
-  }
+  function parseISO(iso) { var p = String(iso).split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2]); }
   function parseHM(str) { var p = String(str).split(":"); return [parseInt(p[0], 10) || 0, parseInt(p[1], 10) || 0]; }
-  function slotTime(di, slot) {
-    var hm = parseHM(state.times[slot]); var d = dayDate(di); d.setHours(hm[0], hm[1], 0, 0); return d.getTime();
-  }
   function fmtTs(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
-  function slotLabel(slot) { return fmtTs(slotTime(0, slot)); }
-  function fmtDayDate(di) { return dayDate(di).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }); }
   function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+  function genId() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-  // ---- state ----
-  function emptyGrid() {
+  function dayDate(med, di) { var d = parseISO(med.start); d.setDate(d.getDate() + di); return d; }
+  function todayIndex(med) { return Math.round((startOfDay(Date.now()) - parseISO(med.start).getTime()) / 86400000); }
+  function slotTime(med, di, slot) { var hm = parseHM(med.times[slot]); var d = dayDate(med, di); d.setHours(hm[0], hm[1], 0, 0); return d.getTime(); }
+  function slotLabel(med, slot) { return fmtTs(slotTime(med, 0, slot)); }
+  function fmtDayDate(med, di) { return dayDate(med, di).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }); }
+
+  function defaultTimes(n) {
+    if (n <= 1) return ["09:00"];
+    var s = 8 * 60, e = 22 * 60, step = (e - s) / (n - 1), out = [];
+    for (var i = 0; i < n; i++) { var m = Math.round(s + i * step); out.push(pad(Math.floor(m / 60)) + ":" + pad(m % 60)); }
+    return out;
+  }
+
+  // ---- grid helpers ----
+  function makeGrid(days, perDay, old) {
     var g = [];
-    for (var i = 0; i < COURSE_DAYS; i++) g.push([null, null, null, null]);
+    for (var d = 0; d < days; d++) {
+      var row = [];
+      for (var s = 0; s < perDay; s++) {
+        var v = (old && old[d] && typeof old[d][s] === "number") ? old[d][s] : null;
+        row.push(v);
+      }
+      g.push(row);
+    }
     return g;
   }
 
-  function migrateFromV1() {
-    var grid = emptyGrid();
-    var start = todayISO();
+  // ---- state load / migrate ----
+  function normTimes(src, n) {
+    var t = defaultTimes(n);
+    if (Array.isArray(src)) for (var i = 0; i < n; i++) if (/^\d{1,2}:\d{2}$/.test(src[i])) t[i] = src[i];
+    return t;
+  }
+  function normMed(m) {
+    var perDay = clamp(parseInt(m.perDay, 10) || 1, 1, MAX_PER_DAY);
+    var days = clamp(parseInt(m.days, 10) || 1, 1, MAX_DAYS);
+    return {
+      id: m.id || genId(),
+      name: String(m.name || "Medicine"),
+      perDay: perDay,
+      days: days,
+      start: /^\d{4}-\d{2}-\d{2}$/.test(m.start) ? m.start : todayISO(),
+      times: normTimes(m.times, perDay),
+      grid: makeGrid(days, perDay, m.grid)
+    };
+  }
+
+  function migrateV2() {
     try {
-      var raw = localStorage.getItem(OLD_KEY);
+      var raw = localStorage.getItem(V2_KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && s.start && Array.isArray(s.grid)) {
+          var med = normMed({ name: "Dicloxacillin Orion", perDay: 4, days: s.grid.length || 9, start: s.start, times: s.times, grid: s.grid });
+          return { meds: [med], activeId: med.id };
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function migrateV1() {
+    try {
+      var raw = localStorage.getItem(V1_KEY);
       if (raw) {
         var arr = JSON.parse(raw);
         if (Array.isArray(arr)) {
           arr = arr.filter(function (n) { return typeof n === "number"; }).sort(function (a, b) { return a - b; });
           if (arr.length) {
-            start = isoOf(arr[0]);
-            var startMs = startOfDay(arr[0]);
+            var start = isoOf(arr[0]), startMs = startOfDay(arr[0]);
+            var grid = makeGrid(9, 4, null);
             arr.forEach(function (ts) {
               var di = Math.round((startOfDay(ts) - startMs) / 86400000);
-              if (di >= 0 && di < COURSE_DAYS) {
-                var slots = grid[di];
-                for (var s = 0; s < DOSES_PER_DAY; s++) { if (slots[s] == null) { slots[s] = ts; break; } }
-              }
+              if (di >= 0 && di < 9) for (var s = 0; s < 4; s++) if (grid[di][s] == null) { grid[di][s] = ts; break; }
             });
+            var med = normMed({ name: "Dicloxacillin Orion", perDay: 4, days: 9, start: start, times: ["08:00", "13:00", "18:00", "22:00"], grid: grid });
+            return { meds: [med], activeId: med.id };
           }
         }
       }
     } catch (e) {}
-    return { start: start, grid: grid, times: DEFAULT_TIMES.slice() };
+    return null;
   }
 
-  function normalizeTimes(src) {
-    var t = DEFAULT_TIMES.slice();
-    if (Array.isArray(src)) {
-      for (var i = 0; i < DOSES_PER_DAY; i++) if (/^\d{1,2}:\d{2}$/.test(src[i])) t[i] = src[i];
-    }
-    return t;
-  }
-
-  function loadState() {
+  function load() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(KEY);
       if (raw) {
         var s = JSON.parse(raw);
-        if (s && typeof s.start === "string" && Array.isArray(s.grid)) {
-          // normalize shape
-          var grid = emptyGrid();
-          for (var d = 0; d < COURSE_DAYS; d++) {
-            var src = s.grid[d] || [];
-            for (var i = 0; i < DOSES_PER_DAY; i++) grid[d][i] = typeof src[i] === "number" ? src[i] : null;
-          }
-          return { start: s.start, grid: grid, times: normalizeTimes(s.times) };
+        if (s && Array.isArray(s.meds)) {
+          var meds = s.meds.map(normMed);
+          var activeId = meds.some(function (m) { return m.id === s.activeId; }) ? s.activeId : (meds[0] && meds[0].id);
+          return { meds: meds, activeId: activeId };
         }
       }
     } catch (e) {}
-    var migrated = migrateFromV1();
-    return migrated;
+    return migrateV2() || migrateV1() || { meds: [], activeId: null };
   }
 
-  function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
-  }
+  var state = load();
+  var view = 0;
+  var trackSig = "";
 
-  var state = loadState();
-  var view = clamp(todayIndex(), 0, COURSE_DAYS - 1);
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function cur() { for (var i = 0; i < state.meds.length; i++) if (state.meds[i].id === state.activeId) return state.meds[i]; return null; }
 
   // ---- elements ----
+  var medBar = document.getElementById("med-bar");
+  var emptyEl = document.getElementById("empty");
+  var mainEl = document.getElementById("main");
+  var medName = document.getElementById("med-name");
+  var medSub = document.getElementById("med-sub");
+  var ovCount = document.getElementById("ov-count");
+  var ovTotal = document.getElementById("ov-total");
+  var ovBar = document.getElementById("ov-bar");
   var carousel = document.getElementById("carousel");
   var track = document.getElementById("track");
   var dotsWrap = document.getElementById("dots");
-  var ovCount = document.getElementById("ov-count");
-  var ovBar = document.getElementById("ov-bar");
   var navDay = document.getElementById("nav-day");
   var navDate = document.getElementById("nav-date");
   var prevBtn = document.getElementById("prev");
   var nextBtn = document.getElementById("next");
   var todayBtn = document.getElementById("today-btn");
-  var startBtn = document.getElementById("start-btn");
-  var resetBtn = document.getElementById("reset-btn");
-  var startPanel = document.getElementById("start-panel");
-  var startInput = document.getElementById("start-date");
-  var startSave = document.getElementById("start-save");
-  var startCancel = document.getElementById("start-cancel");
-  var startPrev = document.getElementById("start-prev");
-  var startNext = document.getElementById("start-next");
-  var datePreview = document.getElementById("date-preview");
-  var timesBtn = document.getElementById("times-btn");
-  var timesPanel = document.getElementById("times-panel");
-  var timesSave = document.getElementById("times-save");
-  var timesCancel = document.getElementById("times-cancel");
-  var timeInputs = [0, 1, 2, 3].map(function (i) { return document.getElementById("t" + i); });
+  var editBtn = document.getElementById("edit-btn");
+  var emptyAdd = document.getElementById("empty-add");
   var toastEl = document.getElementById("toast");
-
-  // ---- build the day cards once ----
-  function buildTrack() {
-    track.innerHTML = "";
-    for (var d = 0; d < COURSE_DAYS; d++) {
-      var day = document.createElement("div");
-      day.className = "day";
-
-      var doses = document.createElement("div");
-      doses.className = "doses";
-      for (var s = 0; s < DOSES_PER_DAY; s++) {
-        var b = document.createElement("button");
-        b.className = "dose";
-        b.dataset.day = d;
-        b.dataset.slot = s;
-        b.innerHTML =
-          '<span class="ring">✓</span>' +
-          '<span class="name">Dose ' + (s + 1) + '</span>' +
-          '<span class="time"></span>';
-        doses.appendChild(b);
-      }
-      day.appendChild(doses);
-
-      var count = document.createElement("div");
-      count.className = "day-count";
-      day.appendChild(count);
-
-      track.appendChild(day);
-    }
-  }
-
-  // ---- render dynamic state ----
-  function dayCount(d) {
-    var c = 0, slots = state.grid[d];
-    for (var i = 0; i < DOSES_PER_DAY; i++) if (slots[i] != null) c++;
-    return c;
-  }
-  function totalCount() {
-    var t = 0;
-    for (var d = 0; d < COURSE_DAYS; d++) t += dayCount(d);
-    return t;
-  }
-
-  function renderStates() {
-    var ti = todayIndex();
-    // dose buttons + per-day count
-    var dayEls = track.children;
-    for (var d = 0; d < COURSE_DAYS; d++) {
-      var dayEl = dayEls[d];
-      var btns = dayEl.querySelectorAll(".dose");
-      for (var s = 0; s < DOSES_PER_DAY; s++) {
-        var ts = state.grid[d][s];
-        var btn = btns[s];
-        // Always show the day's scheduled time so every day reads consistently.
-        btn.querySelector(".time").textContent = slotLabel(s);
-        btn.classList.toggle("taken", ts != null);
-      }
-      var c = dayCount(d);
-      var countEl = dayEl.querySelector(".day-count");
-      if (c >= DOSES_PER_DAY) { countEl.textContent = "All 4 doses taken ✓"; countEl.classList.add("full"); }
-      else { countEl.textContent = c + " of 4 doses taken"; countEl.classList.remove("full"); }
-    }
-
-    // overall
-    var tot = totalCount();
-    ovCount.textContent = String(tot);
-    ovBar.style.width = (tot / TOTAL * 100) + "%";
-
-    // navigator
-    navDay.textContent = "Day " + (view + 1) + " of " + COURSE_DAYS;
-    var badge = (view === ti) ? ' <span class="badge">Today</span>' : "";
-    navDate.innerHTML = fmtDayDate(view) + badge;
-    prevBtn.disabled = view <= 0;
-    nextBtn.disabled = view >= COURSE_DAYS - 1;
-
-    // jump-to-today visibility
-    todayBtn.hidden = (view === ti) || ti < 0 || ti > COURSE_DAYS - 1;
-
-    // dots
-    dotsWrap.innerHTML = "";
-    for (var i = 0; i < COURSE_DAYS; i++) {
-      var c2 = dayCount(i);
-      var btn2 = document.createElement("button");
-      btn2.className = "dotbtn" + (i === view ? " current" : "");
-      var pipCls = c2 >= DOSES_PER_DAY ? "full" : (c2 > 0 ? "partial" : "");
-      btn2.innerHTML = '<span class="pip ' + pipCls + '"></span>';
-      btn2.dataset.day = i;
-      dotsWrap.appendChild(btn2);
-    }
-
-    // start label
-    startBtn.innerHTML = "📅 Day 1 starts <b>" + dayDate(0).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) + "</b> <span class='chg'>Change</span>";
-  }
-
-  // ---- carousel positioning ----
-  function setView(i, animate) {
-    view = clamp(i, 0, COURSE_DAYS - 1);
-    track.classList.toggle("animate", !!animate);
-    track.style.transform = "translateX(" + (-view * 100) + "%)";
-    renderStates();
-  }
-
-  // ---- toggle a dose ----
-  function toggle(d, s) {
-    var slots = state.grid[d];
-    if (slots[s] != null) {
-      slots[s] = null;
-    } else {
-      slots[s] = slotTime(d, s);
-      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
-      var tot = totalCount();
-      if (tot >= TOTAL) toast("Course complete! 🎉", true);
-    }
-    save();
-    renderStates();
-  }
+  // form
+  var medForm = document.getElementById("med-form");
+  var mfTitle = document.getElementById("mf-title");
+  var mfName = document.getElementById("mf-name");
+  var mfPerdayVal = document.getElementById("mf-perday-val");
+  var mfDaysVal = document.getElementById("mf-days-val");
+  var mfStart = document.getElementById("mf-start");
+  var mfTimes = document.getElementById("mf-times");
+  var mfDelete = document.getElementById("mf-delete");
+  var mfCancel = document.getElementById("mf-cancel");
+  var mfSave = document.getElementById("mf-save");
 
   // ---- toast ----
   var toastTimer = null;
@@ -491,57 +448,181 @@
     toastTimer = setTimeout(function () { toastEl.className = "toast"; }, 1700);
   }
 
-  // ---- tap a dose ----
-  // Touch devices toggle in touchend (see below) and set this flag to swallow
-  // the synthetic click; mouse/desktop falls through to this click handler.
+  // ---- counts ----
+  function dayCount(med, d) { var c = 0; for (var i = 0; i < med.perDay; i++) if (med.grid[d][i] != null) c++; return c; }
+  function totalCount(med) { var t = 0; for (var d = 0; d < med.days; d++) t += dayCount(med, d); return t; }
+
+  // ---- build the day cards for the active medicine ----
+  function buildTrack() {
+    var med = cur();
+    track.innerHTML = "";
+    track.style.transform = "translateX(0)";
+    for (var d = 0; d < med.days; d++) {
+      var day = document.createElement("div");
+      day.className = "day";
+      var doses = document.createElement("div");
+      doses.className = "doses";
+      doses.style.gridTemplateColumns = med.perDay === 1 ? "1fr" : "1fr 1fr";
+      for (var s = 0; s < med.perDay; s++) {
+        var b = document.createElement("button");
+        b.className = "dose";
+        b.dataset.day = d; b.dataset.slot = s;
+        b.innerHTML = '<span class="ring">✓</span><span class="name">Dose ' + (s + 1) + '</span><span class="time"></span>';
+        doses.appendChild(b);
+      }
+      day.appendChild(doses);
+      var count = document.createElement("div");
+      count.className = "day-count";
+      day.appendChild(count);
+      track.appendChild(day);
+    }
+  }
+
+  // ---- render dynamic state ----
+  function renderStates() {
+    var med = cur();
+    if (!med) return;
+    var ti = todayIndex(med);
+    var dayEls = track.children;
+    for (var d = 0; d < med.days; d++) {
+      var dayEl = dayEls[d];
+      var btns = dayEl.querySelectorAll(".dose");
+      for (var s = 0; s < med.perDay; s++) {
+        btns[s].querySelector(".time").textContent = slotLabel(med, s);
+        btns[s].classList.toggle("taken", med.grid[d][s] != null);
+      }
+      var c = dayCount(med, d);
+      var countEl = dayEl.querySelector(".day-count");
+      var full = c >= med.perDay;
+      countEl.textContent = full ? ("All " + med.perDay + " doses taken ✓") : (c + " of " + med.perDay + " doses taken");
+      countEl.classList.toggle("full", full);
+    }
+
+    medName.textContent = med.name;
+    medSub.textContent = med.perDay + "× daily · " + med.days + "-day course";
+
+    var tot = totalCount(med), total = med.perDay * med.days;
+    ovCount.textContent = String(tot);
+    ovTotal.textContent = String(total);
+    ovBar.style.width = (total ? tot / total * 100 : 0) + "%";
+
+    navDay.textContent = "Day " + (view + 1) + " of " + med.days;
+    navDate.innerHTML = fmtDayDate(med, view) + (view === ti ? ' <span class="badge">Today</span>' : "");
+    prevBtn.disabled = view <= 0;
+    nextBtn.disabled = view >= med.days - 1;
+    todayBtn.hidden = (view === ti) || ti < 0 || ti > med.days - 1;
+
+    // dots only when the course is short enough to be tidy
+    dotsWrap.hidden = med.days > 14;
+    dotsWrap.innerHTML = "";
+    if (!dotsWrap.hidden) {
+      for (var i = 0; i < med.days; i++) {
+        var c2 = dayCount(med, i);
+        var b2 = document.createElement("button");
+        b2.className = "dotbtn" + (i === view ? " current" : "");
+        b2.innerHTML = '<span class="pip ' + (c2 >= med.perDay ? "full" : (c2 > 0 ? "partial" : "")) + '"></span>';
+        b2.dataset.day = i;
+        dotsWrap.appendChild(b2);
+      }
+    }
+
+    renderMedBar();
+  }
+
+  function renderMedBar() {
+    medBar.innerHTML = "";
+    state.meds.forEach(function (m) {
+      var chip = document.createElement("button");
+      chip.className = "med-chip" + (m.id === state.activeId ? " active" : "");
+      chip.dataset.id = m.id;
+      chip.innerHTML = m.name.replace(/</g, "&lt;") + ' <span class="mini">' + totalCount(m) + "/" + (m.perDay * m.days) + "</span>";
+      medBar.appendChild(chip);
+    });
+    var add = document.createElement("button");
+    add.className = "med-chip add";
+    add.id = "med-add";
+    add.textContent = "＋ Add";
+    medBar.appendChild(add);
+  }
+
+  // ---- carousel ----
+  function setView(i, animate) {
+    var med = cur(); if (!med) return;
+    view = clamp(i, 0, med.days - 1);
+    track.classList.toggle("animate", !!animate);
+    track.style.transform = "translateX(" + (-view * 100) + "%)";
+    renderStates();
+  }
+
+  function toggle(d, s) {
+    var med = cur(); if (!med) return;
+    var slots = med.grid[d];
+    if (slots[s] != null) slots[s] = null;
+    else {
+      slots[s] = slotTime(med, d, s);
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+      if (totalCount(med) >= med.perDay * med.days) toast("Course complete! 🎉", true);
+    }
+    save();
+    renderStates();
+  }
+
+  // ---- switch / show medicine ----
+  function showActive(resetView) {
+    var med = cur();
+    if (!med) { mainEl.hidden = true; emptyEl.hidden = false; renderMedBar(); return; }
+    emptyEl.hidden = true; mainEl.hidden = false;
+    var sig = med.id + ":" + med.perDay + ":" + med.days;
+    if (sig !== trackSig) { buildTrack(); trackSig = sig; resetView = true; }
+    if (resetView) view = clamp(todayIndex(med), 0, med.days - 1);
+    setView(view, false);
+  }
+
+  function selectMed(id) { state.activeId = id; save(); showActive(true); }
+
+  // ---- taps: dose buttons (touch handled in touchend), med bar, dots, arrows ----
   var suppressClick = false;
   track.addEventListener("click", function (e) {
     if (suppressClick) { suppressClick = false; return; }
     var btn = e.target.closest(".dose");
-    if (!btn) return;
-    toggle(+btn.dataset.day, +btn.dataset.slot);
+    if (btn) toggle(+btn.dataset.day, +btn.dataset.slot);
   });
-
   dotsWrap.addEventListener("click", function (e) {
-    var b = e.target.closest(".dotbtn");
-    if (!b) return;
-    setView(+b.dataset.day, true);
+    var b = e.target.closest(".dotbtn"); if (b) setView(+b.dataset.day, true);
   });
-
+  medBar.addEventListener("click", function (e) {
+    if (e.target.closest("#med-add")) { openForm(null); return; }
+    var chip = e.target.closest(".med-chip"); if (chip && chip.dataset.id) selectMed(chip.dataset.id);
+  });
   prevBtn.addEventListener("click", function () { setView(view - 1, true); });
   nextBtn.addEventListener("click", function () { setView(view + 1, true); });
-  todayBtn.addEventListener("click", function () { setView(todayIndex(), true); });
+  todayBtn.addEventListener("click", function () { var m = cur(); if (m) setView(todayIndex(m), true); });
+  emptyAdd.addEventListener("click", function () { openForm(null); });
 
-  // ---- swipe + tap ----
+  // ---- swipe + tap on carousel ----
   var startX = 0, startY = 0, dragging = false, width = 0, startTarget = null;
   carousel.addEventListener("touchstart", function (e) {
     if (e.touches.length !== 1) return;
-    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-    startTarget = e.target;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; startTarget = e.target;
     width = carousel.clientWidth; dragging = true;
     track.classList.remove("animate");
   }, { passive: true });
-
   carousel.addEventListener("touchmove", function (e) {
     if (!dragging) return;
-    var dx = e.touches[0].clientX - startX;
-    var dy = e.touches[0].clientY - startY;
-    if (Math.abs(dx) < Math.abs(dy)) { return; } // let vertical scroll win
-    // resist at edges
-    if ((view === 0 && dx > 0) || (view === COURSE_DAYS - 1 && dx < 0)) dx *= 0.3;
+    var dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    var med = cur(); if (!med) return;
+    if ((view === 0 && dx > 0) || (view === med.days - 1 && dx < 0)) dx *= 0.3;
     track.style.transform = "translateX(" + (-view * width + dx) + "px)";
   }, { passive: true });
-
   carousel.addEventListener("touchend", function (e) {
     if (!dragging) return;
     dragging = false;
-    var dx = e.changedTouches[0].clientX - startX;
-    var dy = e.changedTouches[0].clientY - startY;
+    var med = cur(); if (!med) return;
+    var dx = e.changedTouches[0].clientX - startX, dy = e.changedTouches[0].clientY - startY;
     var threshold = Math.min(60, width * 0.18);
-
-    // Small movement in both axes = a tap: toggle the dose under the finger.
     if (Math.abs(dx) < 14 && Math.abs(dy) < 14) {
-      setView(view, true); // snap back if a tiny drag nudged the track
+      setView(view, true);
       var btn = startTarget && startTarget.closest ? startTarget.closest(".dose") : null;
       if (btn && carousel.contains(btn)) {
         suppressClick = true; setTimeout(function () { suppressClick = false; }, 500);
@@ -549,88 +630,112 @@
       }
       return;
     }
-
-    // Otherwise treat as a horizontal swipe.
     suppressClick = true; setTimeout(function () { suppressClick = false; }, 500);
-    if (dx <= -threshold && view < COURSE_DAYS - 1) setView(view + 1, true);
+    if (dx <= -threshold && view < med.days - 1) setView(view + 1, true);
     else if (dx >= threshold && view > 0) setView(view - 1, true);
     else setView(view, true);
   });
 
-  // ---- start-date editing ----
-  function syncDatePanel() {
-    var iso = startInput.value || todayISO();
-    // never let the first dose be in the future
-    if (iso > todayISO()) { iso = todayISO(); startInput.value = iso; }
-    startInput.max = todayISO();
-    var d = parseISO(iso);
-    datePreview.textContent = d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    startNext.disabled = iso >= todayISO();
-  }
-  function stepStart(delta) {
-    var d = parseISO(startInput.value || todayISO());
-    d.setDate(d.getDate() + delta);
-    if (d.getTime() > parseISO(todayISO()).getTime()) return; // don't go past today
-    startInput.value = isoOf(d.getTime());
-    syncDatePanel();
-  }
-  startBtn.addEventListener("click", function () {
-    if (startPanel.hidden) { timesPanel.hidden = true; startInput.value = state.start; syncDatePanel(); startPanel.hidden = false; }
-    else startPanel.hidden = true;
-  });
-  startPrev.addEventListener("click", function () { stepStart(-1); });
-  startNext.addEventListener("click", function () { stepStart(1); });
-  startInput.addEventListener("change", syncDatePanel);
-  startCancel.addEventListener("click", function () { startPanel.hidden = true; });
-  startSave.addEventListener("click", function () {
-    if (!startInput.value) { toast("Pick a date"); return; }
-    state.start = startInput.value;
-    save();
-    startPanel.hidden = true;
-    setView(clamp(todayIndex(), 0, COURSE_DAYS - 1), false);
-    toast("Start date updated", true);
-  });
+  // ---- add / edit medicine form ----
+  var formId = null;        // null = adding new
+  var formPerDay = 4, formDays = 9;
 
-  // ---- default dose times ----
-  timesBtn.addEventListener("click", function () {
-    if (timesPanel.hidden) {
-      startPanel.hidden = true;
-      for (var i = 0; i < DOSES_PER_DAY; i++) timeInputs[i].value = state.times[i];
-      timesPanel.hidden = false;
-    } else timesPanel.hidden = true;
-  });
-  timesCancel.addEventListener("click", function () { timesPanel.hidden = true; });
-  timesSave.addEventListener("click", function () {
-    var t = [];
-    for (var i = 0; i < DOSES_PER_DAY; i++) {
-      var v = timeInputs[i].value;
-      if (!/^\d{1,2}:\d{2}$/.test(v)) { toast("Set all four times"); return; }
-      t.push(v);
+  function buildTimeInputs(values) {
+    mfTimes.innerHTML = "";
+    for (var i = 0; i < formPerDay; i++) {
+      var row = document.createElement("div");
+      row.className = "time-row";
+      row.innerHTML = '<label>Dose ' + (i + 1) + '</label><input type="time" value="' + (values[i] || "08:00") + '">';
+      mfTimes.appendChild(row);
     }
-    state.times = t;
-    save();
-    timesPanel.hidden = true;
-    renderStates();
-    toast("Dose times updated", true);
+  }
+  function readTimeInputs() {
+    return Array.prototype.map.call(mfTimes.querySelectorAll("input[type=time]"), function (el) { return el.value; });
+  }
+  function setPerDay(n) {
+    var old = readTimeInputs();
+    formPerDay = clamp(n, 1, MAX_PER_DAY);
+    mfPerdayVal.textContent = String(formPerDay);
+    var vals = defaultTimes(formPerDay);
+    for (var i = 0; i < formPerDay; i++) if (old[i]) vals[i] = old[i]; // keep what the user already set
+    buildTimeInputs(vals);
+  }
+  function setDays(n) { formDays = clamp(n, 1, MAX_DAYS); mfDaysVal.textContent = String(formDays); }
+
+  function openForm(id) {
+    formId = id;
+    medForm.hidden = false;
+    if (id) {
+      var med = cur();
+      mfTitle.textContent = "Edit schedule";
+      mfName.value = med.name;
+      formPerDay = med.perDay; formDays = med.days;
+      mfPerdayVal.textContent = String(formPerDay);
+      mfDaysVal.textContent = String(formDays);
+      mfStart.value = med.start;
+      buildTimeInputs(med.times.slice());
+      mfDelete.hidden = false;
+    } else {
+      mfTitle.textContent = "Add medicine";
+      mfName.value = "";
+      formPerDay = 4; formDays = 9;
+      mfPerdayVal.textContent = "4"; mfDaysVal.textContent = "9";
+      mfStart.value = todayISO();
+      buildTimeInputs(defaultTimes(4));
+      mfDelete.hidden = true;
+    }
+    medForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function closeForm() { medForm.hidden = true; }
+
+  document.getElementById("mf-perday-up").addEventListener("click", function () { setPerDay(formPerDay + 1); });
+  document.getElementById("mf-perday-dn").addEventListener("click", function () { setPerDay(formPerDay - 1); });
+  document.getElementById("mf-days-up").addEventListener("click", function () { setDays(formDays + 1); });
+  document.getElementById("mf-days-dn").addEventListener("click", function () { setDays(formDays - 1); });
+  editBtn.addEventListener("click", function () { if (cur()) openForm(cur().id); });
+  mfCancel.addEventListener("click", closeForm);
+
+  mfSave.addEventListener("click", function () {
+    var name = mfName.value.trim();
+    if (!name) { toast("Enter a name"); return; }
+    if (!mfStart.value) { toast("Pick a start date"); return; }
+    var times = readTimeInputs();
+    for (var i = 0; i < times.length; i++) if (!/^\d{1,2}:\d{2}$/.test(times[i])) { toast("Set all dose times"); return; }
+
+    if (formId) {
+      var med = cur();
+      med.name = name; med.start = mfStart.value;
+      med.grid = makeGrid(formDays, formPerDay, med.grid);
+      med.perDay = formPerDay; med.days = formDays; med.times = times;
+      trackSig = ""; // force rebuild (perDay/days may have changed)
+      save(); closeForm(); showActive(true);
+      toast("Schedule updated", true);
+    } else {
+      var nm = { id: genId(), name: name, perDay: formPerDay, days: formDays, start: mfStart.value, times: times, grid: makeGrid(formDays, formPerDay, null) };
+      state.meds.push(nm); state.activeId = nm.id;
+      save(); closeForm(); showActive(true);
+      toast("Medicine added", true);
+    }
   });
 
-  resetBtn.addEventListener("click", function () {
-    if (!confirm("Reset the whole course? This clears every logged dose on this device.")) return;
-    state = { start: todayISO(), grid: emptyGrid(), times: DEFAULT_TIMES.slice() };
-    save();
-    setView(0, false);
-    toast("Course reset");
+  mfDelete.addEventListener("click", function () {
+    var med = cur(); if (!med) return;
+    if (!confirm("Delete \"" + med.name + "\" and all its logged doses?")) return;
+    state.meds = state.meds.filter(function (m) { return m.id !== med.id; });
+    state.activeId = state.meds.length ? state.meds[0].id : null;
+    trackSig = "";
+    save(); closeForm(); showActive(true);
+    toast("Medicine deleted");
   });
 
-  // recalc transform on resize/orientation
-  window.addEventListener("resize", function () { setView(view, false); });
+  // ---- resync ----
+  window.addEventListener("resize", function () { if (cur()) setView(view, false); });
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { state = loadState(); buildTrack(); setView(clamp(view, 0, COURSE_DAYS - 1), false); }
+    if (!document.hidden) { state = load(); trackSig = ""; showActive(false); }
   });
 
   // ---- init ----
-  buildTrack();
-  setView(view, false);
+  showActive(true);
 })();
 </script>
 </body>

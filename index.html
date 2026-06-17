@@ -149,6 +149,14 @@
     appearance: none; width: 100%; background: var(--bg-soft); border: 1px solid var(--line);
     color: var(--text); border-radius: 10px; padding: 12px; font-size: 16px; font-family: inherit;
   }
+  .date-stepper { display: flex; align-items: stretch; gap: 8px; }
+  .date-stepper input[type="date"] { flex: 1; min-width: 0; text-align: center; }
+  .date-stepper .step {
+    appearance: none; flex: 0 0 auto; width: 48px; border: 1px solid var(--line);
+    background: var(--bg-soft); color: var(--text); border-radius: 10px;
+    font-size: 22px; line-height: 1; cursor: pointer; transition: background .15s;
+  }
+  .date-stepper .step:active { background: var(--line); }
   .stepper { display: flex; align-items: center; gap: 10px; }
   .stepper button {
     appearance: none; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line);
@@ -263,7 +271,11 @@
     </div>
     <div class="field">
       <label for="mf-start">First dose date (Day 1)</label>
-      <input type="date" id="mf-start" />
+      <div class="date-stepper">
+        <button type="button" class="step" id="mf-start-prev" aria-label="Previous day">‹</button>
+        <input type="date" id="mf-start" />
+        <button type="button" class="step" id="mf-start-next" aria-label="Next day">›</button>
+      </div>
     </div>
     <div class="field">
       <label>Dose times</label>
@@ -690,6 +702,13 @@
   document.getElementById("mf-perday-dn").addEventListener("click", function () { setPerDay(formPerDay - 1); });
   document.getElementById("mf-days-up").addEventListener("click", function () { setDays(formDays + 1); });
   document.getElementById("mf-days-dn").addEventListener("click", function () { setDays(formDays - 1); });
+  function stepStartDate(delta) {
+    var d = parseISO(mfStart.value || todayISO());
+    d.setDate(d.getDate() + delta);
+    mfStart.value = isoOf(d.getTime());
+  }
+  document.getElementById("mf-start-prev").addEventListener("click", function () { stepStartDate(-1); });
+  document.getElementById("mf-start-next").addEventListener("click", function () { stepStartDate(1); });
   editBtn.addEventListener("click", function () { if (cur()) openForm(cur().id); });
   mfCancel.addEventListener("click", closeForm);
 

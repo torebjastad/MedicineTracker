@@ -139,6 +139,12 @@
   .linkbtn:active { background: var(--bg-soft); }
   .linkbtn.accent { color: #04263a; background: var(--accent); border-color: var(--accent); }
   #edit-btn { border-color: var(--accent); }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+  .seg button {
+    appearance: none; border: none; background: transparent; color: var(--muted);
+    font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 12px; border-radius: 999px;
+  }
+  .seg button.active { background: var(--accent); color: #04263a; }
 
   /* Panels (form) */
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; }
@@ -243,6 +249,10 @@
     <div class="row-actions">
       <button class="linkbtn accent" id="today-btn" hidden>Jump to today</button>
       <button class="linkbtn" id="edit-btn">✎ Edit schedule</button>
+      <div class="seg" id="fmt-seg">
+        <button data-fmt="24h">24h</button>
+        <button data-fmt="12h">AM/PM</button>
+      </div>
     </div>
   </div>
 
@@ -309,7 +319,12 @@
   function todayISO() { return isoOf(Date.now()); }
   function parseISO(iso) { var p = String(iso).split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2]); }
   function parseHM(str) { var p = String(str).split(":"); return [parseInt(p[0], 10) || 0, parseInt(p[1], 10) || 0]; }
-  function fmtTs(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function fmtTs(ts) {
+    var opts = (state && state.timeFormat === "12h")
+      ? { hour: "numeric", minute: "2-digit", hour12: true }
+      : { hour: "2-digit", minute: "2-digit", hour12: false };
+    return new Date(ts).toLocaleTimeString([], opts);
+  }
   function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
   function genId() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -405,7 +420,7 @@
         if (s && Array.isArray(s.meds)) {
           var meds = s.meds.map(normMed);
           var activeId = meds.some(function (m) { return m.id === s.activeId; }) ? s.activeId : (meds[0] && meds[0].id);
-          return { meds: meds, activeId: activeId };
+          return { meds: meds, activeId: activeId, timeFormat: s.timeFormat };
         }
       }
     } catch (e) {}
@@ -413,6 +428,7 @@
   }
 
   var state = load();
+  if (state.timeFormat !== "12h" && state.timeFormat !== "24h") state.timeFormat = "24h";
   var view = 0;
   var trackSig = "";
 
@@ -437,6 +453,7 @@
   var nextBtn = document.getElementById("next");
   var todayBtn = document.getElementById("today-btn");
   var editBtn = document.getElementById("edit-btn");
+  var fmtSeg = document.getElementById("fmt-seg");
   var emptyAdd = document.getElementById("empty-add");
   var toastEl = document.getElementById("toast");
   // form
@@ -538,6 +555,9 @@
       }
     }
 
+    var segBtns = fmtSeg.querySelectorAll("button");
+    for (var k = 0; k < segBtns.length; k++) segBtns[k].classList.toggle("active", segBtns[k].dataset.fmt === state.timeFormat);
+
     renderMedBar();
   }
 
@@ -610,6 +630,10 @@
   nextBtn.addEventListener("click", function () { setView(view + 1, true); });
   todayBtn.addEventListener("click", function () { var m = cur(); if (m) setView(todayIndex(m), true); });
   emptyAdd.addEventListener("click", function () { openForm(null); });
+  fmtSeg.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-fmt]"); if (!b) return;
+    state.timeFormat = b.dataset.fmt; save(); renderStates();
+  });
 
   // ---- swipe + tap on carousel ----
   var startX = 0, startY = 0, dragging = false, width = 0, startTarget = null;

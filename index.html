@@ -308,7 +308,7 @@
   function fmtDayDate(med, di) { return dayDate(med, di).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }); }
 
   function defaultTimes(n) {
-    if (n <= 1) return ["09:00"];
+    if (n <= 1) return ["08:00"];
     var s = 8 * 60, e = 22 * 60, step = (e - s) / (n - 1), out = [];
     for (var i = 0; i < n; i++) { var m = Math.round(s + i * step); out.push(pad(Math.floor(m / 60)) + ":" + pad(m % 60)); }
     return out;
@@ -653,12 +653,10 @@
     return Array.prototype.map.call(mfTimes.querySelectorAll("input[type=time]"), function (el) { return el.value; });
   }
   function setPerDay(n) {
-    var old = readTimeInputs();
     formPerDay = clamp(n, 1, MAX_PER_DAY);
     mfPerdayVal.textContent = String(formPerDay);
-    var vals = defaultTimes(formPerDay);
-    for (var i = 0; i < formPerDay; i++) if (old[i]) vals[i] = old[i]; // keep what the user already set
-    buildTimeInputs(vals);
+    // Redistribute all dose times evenly across the day (morning → evening).
+    buildTimeInputs(defaultTimes(formPerDay));
   }
   function setDays(n) { formDays = clamp(n, 1, MAX_DAYS); mfDaysVal.textContent = String(formDays); }
 
